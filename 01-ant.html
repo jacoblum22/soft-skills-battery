@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Attention Network Test</title>
+
+  <!-- jsPsych 7 via CDN -->
+  <!-- jsPsych 7 — local copies -->
+  <script src="jspsych.js"></script>
+  <script src="plugin-html-keyboard-response.js"></script>
+  <link  href="jspsych.css" rel="stylesheet" />
+
+  <style>
+    /* Override jsPsych defaults for a clean ANT display */
+    .jspsych-content { max-width: none !important; }
+
+    /* Fixed-size stage so the fixation cross stays centred */
+    .ant-stage {
+      position: relative;
+      width: 600px;
+      height: 300px;
+      margin: 0 auto;
+    }
+
+    /* Fixation cross */
+    .ant-cross {
+      position: absolute;
+      left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 36px;
+      color: #333;
+      line-height: 1;
+    }
+
+    /* Star cue */
+    .ant-star {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 26px;
+      color: #333;
+      line-height: 1;
+    }
+    .ant-star.center { top: 50%; transform: translate(-50%, -50%); }
+    .ant-star.above  { top: 28%; }
+    .ant-star.below  { top: 64%; }
+
+    /* Flanker row */
+    .ant-flankers {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 32px;
+      letter-spacing: 6px;
+      white-space: nowrap;
+      line-height: 1;
+      font-family: monospace;
+    }
+    .ant-flankers.above { top: 28%; }
+    .ant-flankers.below { top: 64%; }
+
+    /* Target arrow highlighted slightly */
+    .ant-target { color: #000; }
+    .ant-flanker { color: #333; }
+
+    /* Instruction/info screens */
+    .ant-info {
+      max-width: 620px;
+      margin: 0 auto;
+      text-align: left;
+      line-height: 1.7;
+      font-size: 1rem;
+      padding: 10px 0;
+    }
+    .ant-info h2 { margin-bottom: 12px; }
+    .ant-info p  { margin-bottom: 10px; }
+    .ant-info .key-demo {
+      display: inline-block;
+      background: #eee;
+      border: 1px solid #bbb;
+      border-radius: 4px;
+      padding: 2px 10px;
+      font-family: monospace;
+      font-size: 1.1rem;
+      margin: 0 4px;
+    }
+    .hint { color: #888; font-size: 0.9rem; }
+
+    /* Feedback during practice */
+    .feedback-correct   { color: green;  font-size: 1.3rem; font-weight: bold; }
+    .feedback-incorrect { color: #cc0000; font-size: 1.3rem; font-weight: bold; }
+    .feedback-slow      { color: orange;  font-size: 1.3rem; font-weight: bold; }
+  </style>
+</head>
+<body>
+<script>
+// =============================================================================
+// SHORT ATTENTION NETWORK TEST  (Fan et al. 2005)
+// 3 cue conditions × 2 flanker conditions × 2 positions × 2 directions × 5 reps
+// = 120 test trials  +  12 practice trials
+//
+// Primary score: conflict effect = mean RT(incongruent) − mean RT(congruent)
+// All three network scores are computed and stored.
+// =============================================================================
+
+// ── Config ──────────────────────────────────────────────────────────────────
+const PRACTICE_TRIALS  = 12;   // sampled from full design
+const TEST_REPS        = 5;    // repetitions per condition (5×24 = 120 test trials)
+const FIXATION_MIN_MS  = 400;
+const FIXATION_JITTER  = 1200; // 0–1200 ms random addition
+const CUE_DURATION     = 100;
+const ISI_DURATION     = 400;
+const TARGET_WINDOW    = 1700;
+const TOTAL_TRIAL_MS   = 4000;
+const FEEDBACK_MS      = 1800;
+
+const NEXT_PAGE = '02-cra.html'; // where to go after this test
+
+// ── Arrow symbols ────────────────────────────────────────────────────────────
+const ARROW = { left: '←', right: '→' };
+const KEY   = { left: 'arrowleft', right: 'arrowright' }; // jsPsych 7 lowercases keys
+
+// ── Stimulus builders ────────────────────────────────────────────────────────
+function fixationHTML() {
+  return `<div class="ant-stage"><div class="ant-cross">+</div></div>`;
+}
+
+function cueHTML(cueType, position) {
+  let starHTML = '';
+  if      (cueType === 'center_cue') starHTML = `<div class="ant-star center">✱</div>`;
+  else if (cueType === 'spatial_cue') starHTML = `<div class="ant-star ${position}">✱</div>`;
+  return `<div class="ant-stage"><div class="ant-cross">+</div>${starHTML}</div>`;
+}
+
+function targetHTML(direction, congruence, position) {
+  const tArrow  = ARROW[direction];
+  const fArrow  = congruence === 'congruent' ? ARROW[direction]
+                  : ARROW[direction === 'left' ? 'right' : 'left'];
+  // Build flanker row: f f [t] f f
+  const rowHTML = [
+    `<span class="ant-flanker">${fArrow}</span>`,
+    `<span class="ant-flanker">${fArrow}</span>`,
+    `<span class="ant-target">${tArrow}</span>`,
+    `<span class="ant-flanker">${fArrow}</span>`,
+    `<span class="ant-flanker">${fArrow}</span>`,
+  ].join('');
+  return `<div class="ant-stage">
+    <div class="ant-cross">+</div>
+    <div class="ant-flankers ${position}">${rowHTML}</div>
+  </div>`;
+}
+
+// ── Trial list generator ──────────────────────────────────────────────────────
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function generateTrials(reps) {
+  const cues        = ['no_cue', 'center_cue', 'spatial_cue'];
+  const congruences = ['congruent', 'incongruent'];
+  const positions   = ['above', 'below'];
+  const directions  = ['left', 'right'];
+  const trials = [];
+  for (const cue of cues)
+    for (const congruence of congruences)
+      for (const position of positions)
+        for (const direction of directions)
+          for (let r = 0; r < reps; r++)
+            trials.push({ cue, congruence, position, direction });
+  return shuffle(trials);
+}
+
+// ── Single trial → jsPsych timeline nodes ────────────────────────────────────
+function buildTrialNodes(t, isPractice) {
+  const fixDur = FIXATION_MIN_MS + Math.floor(Math.random() * (FIXATION_JITTER + 1));
+  const itiDur = Math.max(0, TOTAL_TRIAL_MS - fixDur - CUE_DURATION - ISI_DURATION - TARGET_WINDOW);
+
+  const nodes = [
+    // 1. Fixation (jittered)
+    {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: fixationHTML(),
+      choices: 'NO_KEYS',
+      trial_duration: fixDur,
+      data: { event: 'fixation' },
+    },
+    // 2. Cue
+    {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: cueHTML(t.cue, t.position),
+      choices: 'NO_KEYS',
+      trial_duration: CUE_DURATION,
+      data: { event: 'cue', cue: t.cue },
+    },
+    // 3. ISI (fixation after cue)
+    {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: fixationHTML(),
+      choices: 'NO_KEYS',
+      trial_duration: ISI_DURATION,
+      data: { event: 'isi' },
+    },
+    // 4. Target + flankers
+    {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: targetHTML(t.direction, t.congruence, t.position),
+      choices: [KEY.left, KEY.right],
+      trial_duration: TARGET_WINDOW,
+      response_ends_trial: true,
+      data: {
+        event:       'target',
+        is_practice: isPractice,
+        cue:         t.cue,
+        congruence:  t.congruence,
+        position:    t.position,
+        direction:   t.direction,
+        correct_key: KEY[t.direction],
+      },
+      on_finish: function(data) {
+        const expected = data.direction === 'left' ? 'arrowleft' : 'arrowright';
+        data.correct = (data.response === expected);
+      },
+    },
+    // 5. ITI
+    {
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: fixationHTML(),
+      choices: 'NO_KEYS',
+      trial_duration: itiDur,
+      data: { event: 'iti' },
+    },
+  ];
+
+  // Practice feedback
+  if (isPractice) {
+    nodes.push({
+      type: jsPsychHtmlKeyboardResponse,
+      stimulus: function() {
+        const last = jsPsych.data.get().filter({ event: 'target' }).last(1).values()[0];
+        if (!last || last.response === null)
+          return `<p class="feedback-slow">Too slow! Try to respond within 1.7 seconds.</p>`;
+        // Recompute correctness from direction rather than trusting stored field
+        const expected = last.direction === 'left' ? 'arrowleft' : 'arrowright';
+        const isCorrect = last.response === expected;
+        return isCorrect
+          ? `<p class="feedback-correct">✓ Correct</p>`
+          : `<p class="feedback-incorrect">✗ Wrong direction — respond to the CENTER arrow only.<br><small style="color:#888">Pressed: ${last.response} | Expected: ${expected}</small></p>`;
+      },
+      choices: 'NO_KEYS',
+      trial_duration: FEEDBACK_MS,
+      data: { event: 'feedback' },
+    });
+  }
+
+  return nodes;
+}
+
+// ── Build full jsPsych timeline ───────────────────────────────────────────────
+const jsPsych = initJsPsych({
+  on_finish: function() { exportAndAdvance(); },
+});
+
+const timeline = [];
+
+// ── Instructions ──────────────────────────────────────────────────────────────
+timeline.push({
+  type: jsPsychHtmlKeyboardResponse,
+  stimulus: `
+    <div class="ant-info">
+      <h2>Attention Task (~12 minutes)</h2>
+      <p>Arrows will appear on the screen, either <em>above</em> or <em>below</em> the centre cross.</p>
+      <p>Your job is to respond to the <strong>direction of the centre arrow</strong> only:</p>
+      <p>
+        <span class="key-demo">←</span> Left arrow key &nbsp;if the centre arrow points <strong>left (←)</strong><br>
+        <span class="key-demo">→</span> Right arrow key &nbsp;if the centre arrow points <strong>right (→)</strong>
+      </p>
+      <p>Ignore the arrows on either side of the centre — they may point in a different direction.</p>
+      <p>Respond <strong>as quickly and accurately as possible.</strong></p>
+      <p class="hint">You may also see a small star (✱) before the arrows appear — it is just a warning signal, not a target.</p>
+      <p>You will first complete a short practice round with feedback.</p>
+      <br>
+      <p class="hint">Press any key to start practice.</p>
+    </div>`,
+  choices: 'ALL_KEYS',
+});
+
+// ── Practice trials ───────────────────────────────────────────────────────────
+const practiceTrials = generateTrials(1).slice(0, PRACTICE_TRIALS);
+for (const t of practiceTrials)
+  for (const node of buildTrialNodes(t, true))
+    timeline.push(node);
+
+// ── Practice → test transition ────────────────────────────────────────────────
+timeline.push({
+  type: jsPsychHtmlKeyboardResponse,
+  stimulus: `
+    <div class="ant-info" style="text-align:center">
+      <h2>Practice complete</h2>
+      <p>The real task now begins. <strong>No feedback</strong> will be shown.</p>
+      <p>Remember: respond to the <strong>centre arrow direction</strong> only.</p>
+      <p>Respond as quickly and accurately as possible.</p>
+      <br>
+      <p class="hint">Press any key to begin.</p>
+    </div>`,
+  choices: 'ALL_KEYS',
+});
+
+// ── Test trials (120) ─────────────────────────────────────────────────────────
+const testTrials = generateTrials(TEST_REPS);
+for (const t of testTrials)
+  for (const node of buildTrialNodes(t, false))
+    timeline.push(node);
+
+// ── Run ───────────────────────────────────────────────────────────────────────
+jsPsych.run(timeline);
+
+// ── Export & advance ──────────────────────────────────────────────────────────
+function mean(arr) { return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null; }
+
+function exportAndAdvance() {
+  const targets = jsPsych.data.get()
+    .filter({ event: 'target', is_practice: false })
+    .values()
+    .filter(d => d.response !== null && d.correct === true); // correct trials only
+
+  // Network effect computation (RT-based, correct trials only)
+  const rt = (cond) => mean(targets.filter(cond).map(d => d.rt));
+
+  const summary = {
+    n_trials:           targets.length,
+    accuracy:           jsPsych.data.get().filter({ event: 'target', is_practice: false }).values().filter(d => d.correct).length
+                        / jsPsych.data.get().filter({ event: 'target', is_practice: false }).values().length,
+    mean_rt_congruent:   rt(d => d.congruence === 'congruent'),
+    mean_rt_incongruent: rt(d => d.congruence === 'incongruent'),
+    mean_rt_no_cue:      rt(d => d.cue === 'no_cue'),
+    mean_rt_center_cue:  rt(d => d.cue === 'center_cue'),
+    mean_rt_spatial_cue: rt(d => d.cue === 'spatial_cue'),
+    // Network scores
+    conflict_effect_rt:  rt(d => d.congruence === 'incongruent') - rt(d => d.congruence === 'congruent'),
+    alerting_effect_rt:  rt(d => d.cue === 'no_cue')             - rt(d => d.cue === 'center_cue'),
+    orienting_effect_rt: rt(d => d.cue === 'center_cue')         - rt(d => d.cue === 'spatial_cue'),
+  };
+
+  const rawTrials = jsPsych.data.get().filter({ event: 'target', is_practice: false }).values();
+
+  localStorage.setItem('ant_summary', JSON.stringify(summary));
+  localStorage.setItem('ant_raw',     JSON.stringify(rawTrials));
+
+  // Advance checkpoint to CRA
+  const pid = localStorage.getItem('participant_id') || '';
+  localStorage.setItem('battery_checkpoint', JSON.stringify({
+    participantId: pid, task: '02-cra.html', itemIdx: 0, responses: [], timestamp: new Date().toISOString()
+  }));
+
+  // Advance to next test in the battery
+  window.location.href = NEXT_PAGE;
+}
+</script>
+</body>
+</html>

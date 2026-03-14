@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TOSLS – Scientific Literacy</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; display: flex; justify-content: center; }
+    .screen { display: none; max-width: 780px; width: 100%; }
+    .screen.active { display: block; }
+
+    .card { background: white; padding: 36px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-top: 20px; }
+    h1 { font-size: 1.5em; margin-bottom: 16px; }
+    p { line-height: 1.65; margin-bottom: 12px; color: #333; }
+    ul { margin: 0 0 12px 22px; line-height: 1.7; color: #333; }
+
+    .q-meta { font-size: 0.88em; color: #888; margin-bottom: 18px; }
+    .q-body { font-size: 0.97em; line-height: 1.7; color: #222; margin-bottom: 14px; }
+    .context-box { background: #f4f8ff; border-left: 4px solid #4a6cf7; padding: 12px 16px; margin-bottom: 14px; font-size: 0.93em; line-height: 1.65; color: #333; border-radius: 0 4px 4px 0; }
+
+    .diagram { text-align: center; margin: 14px 0; }
+    .diagram img { max-width: 100%; border: 1px solid #ddd; border-radius: 4px; }
+    .img-missing { background: #fff3cd; border: 1px solid #f0c040; color: #856404; padding: 10px 14px; border-radius: 4px; font-size: 0.9em; margin: 10px 0; }
+
+    .mc-option { display: block; padding: 9px 14px; margin: 5px 0; background: #f9f9f9; border: 2px solid #ddd; border-radius: 6px; cursor: pointer; font-size: 0.95em; transition: border-color 0.15s, background 0.15s; text-align: left; width: 100%; }
+    .mc-option:hover { border-color: #4a6cf7; background: #f0f3ff; }
+    .mc-option.selected { border-color: #4a6cf7; background: #e8eeff; }
+
+    .btn-wide { width: 100%; padding: 13px; font-size: 1.05em; margin-top: 24px; background: #4a6cf7; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    .btn-wide:hover { background: #3a5ce0; }
+    .btn { padding: 11px 28px; background: #4a6cf7; color: white; border: none; border-radius: 6px; font-size: 1em; cursor: pointer; margin-top: 16px; }
+    .btn:hover { background: #3a5ce0; }
+
+    .score-box { text-align: center; background: #f0f4ff; padding: 20px; border-radius: 8px; margin: 16px 0; }
+    .score-box .big { font-size: 2.3em; font-weight: bold; color: #4a6cf7; }
+    .score-box .sub { font-size: 0.95em; color: #555; margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88em; margin-top: 12px; }
+    th { background: #f0f4ff; padding: 8px 10px; text-align: left; border-bottom: 2px solid #dde; }
+    td { padding: 7px 10px; border-bottom: 1px solid #eee; }
+    .pass { color: #2a7a2a; font-weight: bold; }
+    .fail { color: #b00; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<!-- Instructions -->
+<div id="screen-instructions" class="screen active">
+  <div class="card">
+    <h1>Scientific Literacy</h1>
+    <p>This section asks you to reason about how science works: evaluating research designs, interpreting graphs, and drawing conclusions from data. There are <strong>10 questions</strong>.</p>
+    <ul>
+      <li>Some questions refer to a passage or graph — read it carefully before choosing an answer.</li>
+      <li>There is no time limit (~15 minutes).</li>
+      <li>Select the best answer for each question.</li>
+    </ul>
+    <button class="btn" onclick="startTOSLS()">Begin</button>
+  </div>
+</div>
+
+<!-- Question -->
+<div id="screen-question" class="screen">
+  <div class="card">
+    <div class="q-meta" id="q-meta">Question 1 of 10</div>
+    <div id="q-content"></div>
+    <button class="btn-wide" onclick="nextQuestion()">Next →</button>
+  </div>
+</div>
+
+<!-- Results -->
+<div id="screen-results" class="screen">
+  <div class="card">
+    <h1>Scientific Literacy — Complete</h1>
+    <div class="score-box">
+      <div class="big" id="score-display">—</div>
+      <div class="sub" id="score-sub">—</div>
+    </div>
+    <table>
+      <thead><tr><th>Q (orig.)</th><th>Skill</th><th>Your answer</th><th>Correct</th><th>Result</th></tr></thead>
+      <tbody id="results-tbody"></tbody>
+    </table>
+    <button class="btn-wide" onclick="proceedNext()">View Battery Results →</button>
+  </div>
+</div>
+
+<script>
+// ─── TOSLS 10-item subset ─────────────────────────────────────────────────
+// Skills selected per battery-slides.md: Skill 4 (research design, 4 items),
+// Skill 6 (read/interpret graphs, 4 items), Skill 9 (inferences from data, 2 items)
+// Original question numbers from Gormally et al. (2012) Appendix B/C preserved as origQ.
+
+const ITEMS = [
+  // ══ SKILL 4: Research design ═════════════════════════════════════════════
+  {
+    origQ: 4, skill: 'Skill 4 – Research design', needsImage: null,
+    context: null,
+    stem: `Which of the following research studies is <em>least likely</em> to contain a confounding variable (one that provides an alternative explanation for the results)?`,
+    options: [
+      'a. Researchers randomly assign participants to experimental and control groups. Females make up 35% of the experimental group and 75% of the control group.',
+      'b. To explore trends in the spiritual/religious beliefs of students at US universities, researchers survey a random selection of 500 freshmen at a small private university in the South.',
+      'c. To evaluate a new diet program, researchers compare weight loss between participants randomly assigned to treatment (diet) and control (no diet) groups, while controlling for daily exercise and pre-diet weight.',
+      'd. Researchers tested the effectiveness of a new tree fertiliser on 10,000 saplings. Control group (no fertiliser) was tested in the fall; treatment group (fertiliser) was tested the following spring.',
+    ],
+    answer: 'c',
+  },
+  {
+    origQ: 13, skill: 'Skill 4 – Research design', needsImage: null,
+    context: `A recent study followed more than 2,500 New Yorkers for 9+ years and found that people who drank diet soda every day had a 61% higher risk of vascular events (stroke, heart attack) compared to those who avoided diet drinks. The research team randomly surveyed 2,564 New Yorkers about eating behaviors, exercise habits, and cigarette and alcohol consumption. Participants also received physical check-ups. The increased likelihood of vascular events remained after accounting for smoking, high blood pressure, and high cholesterol. No increased risk was found among people who drank regular soda.`,
+    stem: `The lead researcher said: "I think diet soda drinkers need to stay tuned, but I don't think anyone should change their behaviors quite yet." Why didn't she warn people to stop drinking diet soda right away?`,
+    options: [
+      'a. The results should be replicated with a sample more representative of the US population.',
+      'b. There may be significant confounds present (alternative explanations for the relationship between diet sodas and vascular disease).',
+      'c. Subjects were not randomly assigned to treatment and control groups.',
+      'd. All of the above.',
+    ],
+    answer: 'd',
+  },
+  {
+    origQ: 14, skill: 'Skill 4 – Research design', needsImage: null,
+    context: `(same study as the previous question)`,
+    stem: `Which of the following attributes is <em>not</em> a strength of that study's research design?`,
+    options: [
+      'a. Collecting data from a large sample size.',
+      'b. Randomly sampling NYC residents.',
+      'c. Randomly assigning participants to control and experimental groups.',
+      'd. All of the above.',
+    ],
+    answer: 'c',
+  },
+  {
+    origQ: 25, skill: 'Skill 4 – Research design', needsImage: null,
+    context: null,
+    stem: `A researcher hypothesises that immunisations containing traces of mercury do <em>not</em> cause autism in children. Which of the following data provides the strongest test of this hypothesis?`,
+    options: [
+      'a. A count of the number of children who were immunised and have autism.',
+      'b. Yearly screening data on autism symptoms for immunised and non-immunised children from birth to age 12.',
+      'c. Mean autism rate for children born in the United States.',
+      'd. Mean blood mercury concentration in children with autism.',
+    ],
+    answer: 'b',
+  },
+  // ══ SKILL 6: Read and interpret graphical representations ════════════════
+  {
+    origQ: 2, skill: 'Skill 6 – Interpreting graphs', needsImage: null,
+    context: `While growing vegetables in your backyard, you counted the insects eating your plants over time:\n\nTime (days): 2, 4, 8, 10\nInsect population: 7, 16, 60, 123`,
+    stem: `Which type of graph best represents this data?`,
+    options: [
+      'a. A bar chart with days on the x-axis and population on the y-axis.',
+      'b. A pie chart showing the proportion of insects at each time point.',
+      'c. A line graph with days on the x-axis and population on the y-axis, showing an exponential (upward-curving) trend.',
+      'd. A scatter plot with a straight line of best fit.',
+    ],
+    answer: 'c',
+  },
+  {
+    origQ: 6, skill: 'Skill 6 – Interpreting graphs', needsImage: 'tosls-Q6.png',
+    context: `The following graph appeared in a scientific article about the effects of pesticides on tadpoles in their natural environment.`,
+    stem: `When beetles were introduced as predators to the Leopard frog tadpoles, and the pesticide Malathion was added, the results were unusual. Which of the following is a plausible hypothesis to explain these results?`,
+    options: [
+      'a. The Malathion killed the tadpoles, causing the beetles to be hungrier and eat more tadpoles.',
+      'b. The Malathion killed the tadpoles, so the beetles had more food and their population increased.',
+      'c. The Malathion killed the beetles, causing fewer tadpoles to be eaten.',
+      'd. The Malathion killed the beetles, causing the tadpole population to prey on each other.',
+    ],
+    answer: 'c',
+  },
+  {
+    origQ: 7, skill: 'Skill 6 – Interpreting graphs', needsImage: 'tosls-Q7.png',
+    context: `The pie charts below show tumors found in Type A and Type B mice. Numbers outside each slice show the percentage of that tumor type.`,
+    stem: `Which of the following is the best interpretation of the graphs?`,
+    options: [
+      'a. Type A mice with Lymphoma were more common than Type A mice with no tumors.',
+      'b. Type B mice were more likely to have tumors than Type A mice.',
+      'c. Lymphoma was equally common among Type A and Type B mice.',
+      'd. Carcinoma was less common than Lymphoma only in Type B mice.',
+    ],
+    answer: 'a',
+  },
+  {
+    origQ: 18, skill: 'Skill 6 – Interpreting graphs', needsImage: 'tosls-Q18.png',
+    context: `The graph below shows global meat consumption trends over approximately 40 years.`,
+    stem: `Which of the following is the most accurate conclusion you can draw from the data in this graph?`,
+    options: [
+      'a. The largest increase in meat consumption has occurred in the past 20 years.',
+      'b. Meat consumption has increased at a constant rate over the past 40 years.',
+      'c. Meat consumption doubles in developing countries every 20 years.',
+      'd. Meat consumption increases by 50% every 10 years.',
+    ],
+    answer: 'a',
+  },
+  // ══ SKILL 9: Justify inferences from quantitative data ═══════════════════
+  {
+    origQ: 21, skill: 'Skill 9 – Inferences from data', needsImage: 'tosls-Q21.png',
+    context: `A blogger argues that playing violent video games does not cause violent crimes. He presents a graph showing that violent crime rates declined sharply beginning around the time the first moderately violent video game (Doom) was introduced.`,
+    stem: `Considering the information in the graph, what is the most critical flaw in the blogger's argument?`,
+    options: [
+      'a. Violent crime rates appear to increase slightly after the introduction of the Intellivision and SNES game systems.',
+      'b. The graph does not show violent crime rates for children under 12, so results are biased.',
+      'c. The decreasing trend in violent crime rates may be caused by something other than violent video games.',
+      'd. The graph only shows data up to 2003. More current data are needed.',
+    ],
+    answer: 'c',
+  },
+  {
+    origQ: 28, skill: 'Skill 9 – Inferences from data', needsImage: 'tosls-Q28.png',
+    context: `Researchers interested in the relation between River Shrimp (Macrobrachium) abundance and pool site elevation presented the data in the graph below. Interestingly, the researchers also noted that water pools tended to be shallower at higher elevations.`,
+    stem: `Which of the following is a plausible hypothesis to explain the results presented in the graph?`,
+    options: [
+      'a. There are more water pools at elevations above 340 m because it rains more frequently at higher elevations.',
+      'b. River shrimp are more abundant at lower elevations because pools at those sites tend to be deeper.',
+      'c. This graph cannot be interpreted due to an outlying data point.',
+      'd. As elevation increases, shrimp abundance increases because they have fewer predators at higher elevations.',
+    ],
+    answer: 'b',
+  },
+];
+
+// ─── State ─────────────────────────────────────────────────────────────────
+let currentIdx = 0;
+let responses = [];
+let selected = null;
+
+function saveCheckpoint() {
+  const pid = localStorage.getItem('participant_id') || '';
+  localStorage.setItem('battery_checkpoint', JSON.stringify({
+    participantId: pid, task: '06-tosls.html',
+    itemIdx: currentIdx, responses, timestamp: new Date().toISOString()
+  }));
+}
+
+function startTOSLS() {
+  let cp = null;
+  try { cp = JSON.parse(localStorage.getItem('battery_checkpoint')); } catch {}
+  const pid = localStorage.getItem('participant_id') || '';
+  if (cp && cp.participantId === pid && cp.task === '06-tosls.html' && cp.responses && cp.responses.length > 0) {
+    currentIdx = cp.itemIdx;
+    responses = cp.responses;
+  }
+  showScreen('screen-question');
+  renderQuestion();
+}
+
+function renderQuestion() {
+  selected = null;
+  const item = ITEMS[currentIdx];
+  document.getElementById('q-meta').textContent = `Question ${currentIdx + 1} of ${ITEMS.length}  (${item.skill})`;
+  document.getElementById('q-content').innerHTML = buildItemHTML(item);
+}
+
+function buildItemHTML(item) {
+  let html = '';
+  if (item.needsImage) {
+    html += `<div class="diagram">
+      <img src="img/${item.needsImage}" alt="Graph"
+        onerror="this.style.display='none';document.getElementById('imgmiss-${item.origQ}').style.display='block'">
+      <div id="imgmiss-${item.origQ}" class="img-missing" style="display:none">
+        ⚠️ Graph image missing — save screenshot as <code>img/${item.needsImage}</code>
+      </div>
+    </div>`;
+  }
+  if (item.context && item.context !== '(same study as the previous question)') {
+    html += `<div class="context-box"><strong>Background:</strong> ${item.context}</div>`;
+  } else if (item.context) {
+    html += `<div class="context-box"><em>${item.context}</em></div>`;
+  }
+  html += `<div class="q-body">${item.stem}</div>`;
+  item.options.forEach((opt, i) => {
+    const val = opt[0];
+    html += `<button class="mc-option" id="mc-${item.origQ}-${val}" onclick="selectOpt('${item.origQ}','${val}',this)">${opt}</button>`;
+  });
+
+  // DEV mode answer hint
+  if (localStorage.getItem('participant_id') === 'DEV') {
+    const matchOpt = item.options.find(o => o[0] === item.answer);
+    const hint = matchOpt ? `${item.answer}. ${matchOpt.replace(/^[a-d][.)]\s*/,'')}` : item.answer;
+    html += `<details style="margin-top:10px;"><summary style="cursor:pointer;padding:4px 10px;background:#fff3cd;border:1px solid #f0c040;border-radius:5px;font-size:0.85em;color:#5a3000;display:inline-block;">&#x2139; DEV: Reveal answer</summary><div style="padding:6px 12px;background:#fff3cd;border:1px solid #f0c040;border-top:none;border-radius:0 0 5px 5px;font-size:0.85em;color:#5a3000;"><strong>${hint}</strong></div></details>`;
+  }
+
+  return html;
+}
+
+let mcMap = {};
+function selectOpt(qId, val, el) {
+  document.querySelectorAll(`[id^="mc-${qId}-"]`).forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  mcMap[qId] = val;
+  selected = val;
+}
+
+function nextQuestion() {
+  const item = ITEMS[currentIdx];
+  const resp = mcMap[item.origQ] || '';
+  responses.push({
+    origQ: item.origQ, skill: item.skill,
+    response: resp, answer: item.answer,
+    isCorrect: resp === item.answer,
+  });
+  saveCheckpoint();
+  currentIdx++;
+  if (currentIdx < ITEMS.length) renderQuestion();
+  else showResults();
+}
+
+function showResults() {
+  const nCorrect = responses.filter(r => r.isCorrect).length;
+  document.getElementById('score-display').textContent = `${nCorrect} / ${ITEMS.length}`;
+
+  const bySkill = {};
+  responses.forEach(r => {
+    if (!bySkill[r.skill]) bySkill[r.skill] = {n:0, correct:0};
+    bySkill[r.skill].n++;
+    if (r.isCorrect) bySkill[r.skill].correct++;
+  });
+  document.getElementById('score-sub').textContent = Object.entries(bySkill)
+    .map(([k, v]) => `${k}: ${v.correct}/${v.n}`).join('  |  ');
+
+  const tbody = document.getElementById('results-tbody');
+  tbody.innerHTML = '';
+  responses.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r.origQ}</td><td>${r.skill}</td>
+      <td>${r.response || '(blank)'}</td><td>${r.answer}</td>
+      <td class="${r.isCorrect ? 'pass' : 'fail'}">${r.isCorrect ? '✓' : '✗'}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  localStorage.setItem('tosls_summary', JSON.stringify({
+    task: 'TOSLS', n_items: ITEMS.length, n_correct: nCorrect,
+    by_skill: bySkill, timestamp: new Date().toISOString()
+  }));
+  localStorage.setItem('tosls_trials', JSON.stringify(responses));
+  showScreen('screen-results');
+}
+
+function proceedNext() {
+  // Battery complete — remove checkpoint
+  localStorage.removeItem('battery_checkpoint');
+  window.location.href = 'results.html';
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+</script>
+</body>
+</html>

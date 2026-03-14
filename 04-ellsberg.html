@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ambiguity Attitudes Task</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f5f5f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    #container {
+      background: white;
+      border-radius: 10px;
+      padding: 40px;
+      max-width: 760px;
+      width: 100%;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+    }
+
+    h1 { font-size: 1.3rem; color: #333; margin-bottom: 8px; }
+    .subtitle { font-size: 0.95rem; color: #666; margin-bottom: 30px; }
+
+    /* Urn display */
+    .urns-row {
+      display: flex;
+      gap: 40px;
+      justify-content: center;
+      margin-bottom: 32px;
+    }
+
+    .urn-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .urn-label {
+      font-weight: bold;
+      font-size: 1rem;
+      color: #333;
+    }
+
+    .urn-visual {
+      width: 120px;
+      height: 180px;
+      border: 3px solid #444;
+      border-radius: 4px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .urn-purple {
+      background: #7b3fa0;
+      flex: var(--purple-flex, 1);
+    }
+
+    .urn-yellow {
+      background: #e8c840;
+      flex: var(--yellow-flex, 1);
+    }
+
+    .urn-unknown {
+      background: repeating-linear-gradient(
+        45deg,
+        #ccc,
+        #ccc 10px,
+        #e8e8e8 10px,
+        #e8e8e8 20px
+      );
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .urn-unknown span {
+      font-size: 2.5rem;
+      color: #666;
+      font-weight: bold;
+    }
+
+    .urn-desc {
+      font-size: 0.85rem;
+      color: #555;
+      text-align: center;
+      max-width: 140px;
+      line-height: 1.4;
+    }
+
+    /* Prize statement */
+    .prize-statement {
+      text-align: center;
+      font-size: 0.95rem;
+      color: #444;
+      margin-bottom: 28px;
+      background: #f9f9ef;
+      border: 1px solid #e0d080;
+      border-radius: 6px;
+      padding: 10px 18px;
+    }
+
+    /* Question */
+    .question {
+      text-align: center;
+      font-size: 1.05rem;
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 24px;
+    }
+
+    /* Buttons */
+    .btn-row {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 12px 28px;
+      font-size: 0.95rem;
+      border: 2px solid transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    #btn-k {
+      background: #7b3fa0;
+      color: white;
+      border-color: #7b3fa0;
+    }
+    #btn-k:hover { background: #6a338c; }
+
+    #btn-indiff {
+      background: white;
+      color: #555;
+      border-color: #bbb;
+    }
+    #btn-indiff:hover { background: #f0f0f0; }
+
+    #btn-u {
+      background: #aaa;
+      color: white;
+      border-color: #aaa;
+    }
+    #btn-u:hover { background: #999; }
+
+    /* Progress indicator */
+    .progress {
+      font-size: 0.8rem;
+      color: #999;
+      text-align: center;
+      margin-top: 24px;
+    }
+
+    /* Instruction screen */
+    #instructions { display: block; }
+    #task { display: none; }
+    #results { display: none; }
+
+    .instructions-body {
+      line-height: 1.7;
+      color: #444;
+      font-size: 0.95rem;
+    }
+
+    .instructions-body p { margin-bottom: 12px; }
+    .instructions-body strong { color: #333; }
+
+    .urn-example-row {
+      display: flex;
+      gap: 30px;
+      justify-content: center;
+      margin: 20px 0;
+    }
+
+    .start-btn {
+      background: #2a7ac9;
+      color: white;
+      border: none;
+      padding: 14px 36px;
+      font-size: 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      display: block;
+      margin: 28px auto 0;
+    }
+    .start-btn:hover { background: #2068ad; }
+
+    /* Results */
+    .results-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 0.9rem;
+    }
+    .results-table th, .results-table td {
+      padding: 10px 14px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+    .results-table th { background: #f5f5f5; font-weight: 600; }
+
+    .copy-btn {
+      background: #444;
+      color: white;
+      border: none;
+      padding: 10px 22px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      margin-right: 10px;
+    }
+    .copy-btn:hover { background: #333; }
+    .note { font-size: 0.8rem; color: #888; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+<div id="container">
+
+  <!-- INSTRUCTIONS -->
+  <div id="instructions">
+    <h1>Decision Task</h1>
+    <div class="subtitle">~10 minutes</div>
+    <div class="instructions-body">
+      <p>In this task you will make a series of choices between two boxes containing <strong>purple</strong> and <strong>yellow</strong> balls.</p>
+      <p><strong>Box K</strong> has a <em>known</em> composition — you can see exactly how many balls are purple and how many are yellow.</p>
+      <p><strong>Box U</strong> has an <em>unknown</em> composition — the proportion of purple and yellow balls is not shown.</p>
+      <p>On each trial, one ball will be drawn from the box you choose. <strong>If a purple ball is drawn, you win.</strong></p>
+      <div class="urn-example-row">
+        <div class="urn-block">
+          <div class="urn-label">Box K</div>
+          <div class="urn-visual">
+            <div class="urn-purple" style="flex: 50"></div>
+            <div class="urn-yellow" style="flex: 50"></div>
+          </div>
+          <div class="urn-desc">50% purple<br>50% yellow<br><em>(you can see this)</em></div>
+        </div>
+        <div class="urn-block">
+          <div class="urn-label">Box U</div>
+          <div class="urn-visual">
+            <div class="urn-unknown"><span>?</span></div>
+          </div>
+          <div class="urn-desc">Unknown mix of<br>purple and yellow<br><em>(you cannot see this)</em></div>
+        </div>
+      </div>
+      <p>For each question, you will choose: <strong>Box K</strong>, <strong>Box U</strong>, or <strong>I'm indifferent</strong> (both seem equally attractive to you).</p>
+      <p>There are no right or wrong answers. Just choose whatever you genuinely prefer.</p>
+    </div>
+    <button class="start-btn" onclick="startTask()">Start Task →</button>
+  </div>
+
+  <!-- TASK -->
+  <div id="task">
+    <h1 id="task-title">Question</h1>
+    <div class="subtitle" id="task-subtitle"></div>
+
+    <div class="urns-row">
+      <div class="urn-block">
+        <div class="urn-label">Box K</div>
+        <div class="urn-visual" id="urn-k-visual">
+          <div class="urn-purple" id="urn-k-purple"></div>
+          <div class="urn-yellow" id="urn-k-yellow"></div>
+        </div>
+        <div class="urn-desc" id="urn-k-desc"></div>
+      </div>
+
+      <div class="urn-block">
+        <div class="urn-label">Box U</div>
+        <div class="urn-visual">
+          <div class="urn-unknown"><span>?</span></div>
+        </div>
+        <div class="urn-desc" id="urn-u-desc">Unknown proportion<br>of purple and yellow</div>
+      </div>
+    </div>
+
+    <div class="prize-statement" id="prize-statement"></div>
+
+    <div class="question">Which box would you prefer to draw from?</div>
+
+    <div class="btn-row">
+      <button id="btn-k" onclick="recordChoice('K')">Choose Box K</button>
+      <button id="btn-indiff" onclick="recordChoice('indifferent')">I'm indifferent</button>
+      <button id="btn-u" onclick="recordChoice('U')">Choose Box U</button>
+    </div>
+
+    <div class="progress" id="progress-text"></div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results">
+    <h1>Task Complete</h1>
+    <div class="subtitle">Your responses have been recorded.</div>
+    <table class="results-table" id="results-table">
+      <thead>
+        <tr>
+          <th>Question</th>
+          <th>Event probability</th>
+          <th>Matching probability</th>
+          <th>Iterations</th>
+        </tr>
+      </thead>
+      <tbody id="results-body"></tbody>
+    </table>
+    <button class="copy-btn" onclick="copyResults()">Copy results to clipboard</button>
+    <div class="note" id="copy-status"></div>
+    <div class="note">These values are the matching probabilities: the known urn probability at which you were indifferent between Box K and Box U.</div>
+    <button class="start-btn" style="margin-top:24px" onclick="window.location.href='05-lctsr.html'">Continue to Next Task →</button>
+  </div>
+
+</div>
+
+<script>
+// =============================================================================
+// ELLSBERG PARADOX TASK — Dimmock, Kouwenberg & Wakker (2016)
+// Bisection procedure to elicit matching probabilities m(0.1), m(0.5), m(0.9)
+// =============================================================================
+
+// Sequences to measure: event probabilities for the unknown urn
+// The "event" is drawing a purple ball from Box U
+// m(p) = matching probability = known-urn probability at which participant is indifferent
+const SEQUENCES = [
+  { eventProb: 0.5,  label: "m(0.5)",  description: "Box U: 50 out of 100 balls are purple" },
+  { eventProb: 0.1,  label: "m(0.1)",  description: "Box U: 10 out of 100 balls are purple" },
+  { eventProb: 0.9,  label: "m(0.9)",  description: "Box U: 90 out of 100 balls are purple" },
+];
+
+const MAX_ITER = 5; // Maximum bisection iterations (Dimmock et al. used up to 6)
+
+let currentSeqIdx = 0;
+let currentProb = 0;      // current known-urn probability (0.0–1.0)
+let lowerBound  = 0;
+let upperBound  = 1;
+let iterCount   = 0;
+let results     = [];
+
+// =============================================================================
+// NAVIGATION
+// =============================================================================
+
+function startTask() {
+  document.getElementById('instructions').style.display = 'none';
+  document.getElementById('task').style.display = 'block';
+  initSequence();
+}
+
+function initSequence() {
+  const seq = SEQUENCES[currentSeqIdx];
+  currentProb = seq.eventProb;   // start the bisection at eventProb
+  lowerBound  = 0;
+  upperBound  = 1;
+  iterCount   = 0;
+
+  // Update title/subtitle
+  document.getElementById('task-title').textContent =
+    `Question set ${currentSeqIdx + 1} of ${SEQUENCES.length}`;
+  document.getElementById('task-subtitle').textContent =
+    `Box U for this set has approximately ${Math.round(seq.eventProb * 100)} purple balls out of 100 — but the exact number is unknown`;
+
+  // Describe what Box U "contains" for this sequence
+  document.getElementById('urn-u-desc').innerHTML =
+    `~${Math.round(seq.eventProb * 100)}% purple<br>(exact amount unknown)</div>`;
+
+  renderIteration();
+}
+
+function renderIteration() {
+  const prob = currentProb;
+  const purplePct = Math.round(prob * 100);
+  const yellowPct = 100 - purplePct;
+
+  // Update urn K visual (flex proportions)
+  document.getElementById('urn-k-purple').style.flex = purplePct;
+  document.getElementById('urn-k-yellow').style.flex = Math.max(yellowPct, 0);
+
+  // Description under Urn K
+  document.getElementById('urn-k-desc').innerHTML =
+    `${purplePct}% purple<br>${yellowPct}% yellow<br><em>(you can see this)</em>`;
+
+  // Prize statement
+  document.getElementById('prize-statement').textContent =
+    `If a purple ball is drawn you win. Box K has ${purplePct} purple balls out of 100.`;
+
+  // Progress
+  document.getElementById('progress-text').textContent =
+    `Iteration ${iterCount + 1} of up to ${MAX_ITER + 1} for this question set`;
+
+  // Enable all buttons
+  document.getElementById('btn-k').disabled = false;
+  document.getElementById('btn-indiff').disabled = false;
+  document.getElementById('btn-u').disabled = false;
+}
+
+// =============================================================================
+// BISECTION LOGIC
+// =============================================================================
+
+function recordChoice(choice) {
+  // Disable buttons to prevent double-click
+  document.getElementById('btn-k').disabled = true;
+  document.getElementById('btn-indiff').disabled = true;
+  document.getElementById('btn-u').disabled = true;
+
+  iterCount++;
+
+  if (choice === 'K') {
+    // Participant prefers known urn → Box K is too attractive → lower its probability
+    upperBound = currentProb;
+    currentProb = (lowerBound + currentProb) / 2;
+    advance();
+  } else if (choice === 'U') {
+    // Participant prefers unknown urn → Box K is not attractive enough → raise its probability
+    lowerBound = currentProb;
+    currentProb = (currentProb + upperBound) / 2;
+    advance();
+  } else {
+    // Indifferent — matching probability found
+    recordMatchingProb(currentProb, iterCount, 'indifferent');
+  }
+}
+
+function advance() {
+  if (iterCount >= MAX_ITER) {
+    // Max iterations reached — use midpoint of remaining bounds
+    const matchProb = (lowerBound + upperBound) / 2;
+    recordMatchingProb(matchProb, iterCount, 'timeout');
+  } else {
+    // Continue bisection
+    setTimeout(renderIteration, 300);
+  }
+}
+
+function recordMatchingProb(matchProb, iters, reason) {
+  const seq = SEQUENCES[currentSeqIdx];
+  results.push({
+    sequenceLabel: seq.label,
+    eventProb: seq.eventProb,
+    matchingProb: matchProb,
+    iterations: iters,
+    reason: reason,
+    timestamp: new Date().toISOString(),
+  });
+
+  currentSeqIdx++;
+  if (currentSeqIdx < SEQUENCES.length) {
+    // Brief pause then start next sequence
+    setTimeout(() => initSequence(), 600);
+  } else {
+    showResults();
+  }
+}
+
+// =============================================================================
+// RESULTS
+// =============================================================================
+
+function showResults() {
+  document.getElementById('task').style.display = 'none';
+  document.getElementById('results').style.display = 'block';
+
+  // Save to localStorage for the battery results page
+  const summary = {
+    task: 'Ellsberg',
+    m_0x5: results.find(r => r.sequenceLabel === 'm(0.5)')?.matchingProb ?? null,
+    m_0x1: results.find(r => r.sequenceLabel === 'm(0.1)')?.matchingProb ?? null,
+    m_0x9: results.find(r => r.sequenceLabel === 'm(0.9)')?.matchingProb ?? null,
+    timestamp: new Date().toISOString(),
+  };
+  localStorage.setItem('ellsberg_summary', JSON.stringify(summary));
+  localStorage.setItem('ellsberg_trials', JSON.stringify(results));
+
+  const tbody = document.getElementById('results-body');
+  tbody.innerHTML = '';
+
+  results.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${r.sequenceLabel}</td>
+      <td>${Math.round(r.eventProb * 100)}%</td>
+      <td>${(r.matchingProb * 100).toFixed(1)}%</td>
+      <td>${r.iterations} (${r.reason})</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function copyResults() {
+  const lines = ['sequence\tevent_prob\tmatching_prob\titerations\treason\ttimestamp'];
+  results.forEach(r => {
+    lines.push([
+      r.sequenceLabel,
+      r.eventProb.toFixed(2),
+      r.matchingProb.toFixed(4),
+      r.iterations,
+      r.reason,
+      r.timestamp,
+    ].join('\t'));
+  });
+  navigator.clipboard.writeText(lines.join('\n')).then(() => {
+    document.getElementById('copy-status').textContent = '✓ Copied to clipboard (tab-separated, paste into Excel/Sheets)';
+  }).catch(() => {
+    document.getElementById('copy-status').textContent = 'Could not copy automatically — select and copy the table above manually.';
+  });
+}
+</script>
+</body>
+</html>

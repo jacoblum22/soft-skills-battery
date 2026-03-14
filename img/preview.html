@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Image Assignment Preview</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f0f0f0; padding: 20px; }
+    h1 { margin-bottom: 4px; }
+    .subtitle { font-size: 0.9em; color: #666; margin-bottom: 24px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 18px; }
+    .item {
+      background: white; border-radius: 8px; padding: 14px;
+      border: 3px solid #ddd; box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    }
+    .item.confirmed { border-color: #2a7a2a; }
+    .item.uncertain { border-color: #f0a000; }
+    .item img { width: 100%; border: 1px solid #eee; border-radius: 4px; margin: 8px 0; max-height: 280px; object-fit: contain; background: #fafafa; }
+    .filename { font-size: 0.75em; color: #888; font-family: monospace; word-break: break-all; }
+    .idx { font-size: 0.8em; font-weight: bold; color: #555; }
+    .guess { margin-top: 6px; padding: 6px 10px; background: #f4f8ff; border-radius: 4px; font-size: 0.85em; }
+    .guess strong { color: #4a6cf7; }
+    .guess .desc { color: #555; font-size: 0.9em; margin-top: 2px; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.75em; font-weight: bold; margin-left: 6px; }
+    .badge.sure { background: #d4edda; color: #155724; }
+    .badge.unsure { background: #fff3cd; color: #856404; }
+    .newname { font-size: 0.8em; color: #333; margin-top: 4px; font-family: monospace; }
+    .newname span { background: #eee; padding: 2px 6px; border-radius: 3px; }
+  </style>
+</head>
+<body>
+<h1>Image Assignment Preview</h1>
+<p class="subtitle">Green border = confident guess · Orange border = uncertain · Confirm before renaming</p>
+<div class="grid" id="grid"></div>
+
+<script>
+// Files in the img/ folder, in sorted order (alphabetical = timestamp order)
+const FILES = [
+  "atta-Q1.png",
+  "atta-Q2.png",
+  "atta-Q7.png",
+  "atta-Q8.png",
+  "atta-Q11.png",
+  "atta-Q12.png",
+  "atta-Q13-q.png",
+  "atta-Q13-a.png",
+  "atta-Q13-b.png",
+  "atta-Q13-c.png",
+  "atta-Q13-d.png",
+  "atta-Q16-1.png",
+  "atta-Q16-2.png",
+  "atta-Q16-3.png",
+  "atta-Q21-q1.png",
+  "atta-Q21-q2.png",
+  "atta-Q21-q3.png",
+  "atta-Q21-a1.png",
+  "atta-Q21-a2.png",
+  "atta-Q21-a3.png",
+  "atta-Q21-a4.png",
+  "atta-Q23.png",
+  "atta-Q24.png",
+  "atta-Q25-1.png",
+  "atta-Q25-2.png",
+  "atta-Q26-1.png",
+  "atta-Q26-2.png",
+  "atta-Q27.png",
+  // LCTSR
+  "lctsr-Q2.png",
+  "lctsr-Q3.png",
+  "lctsr-Q5.png",
+  "lctsr-Q11.png",
+  "lctsr-Q12.png",
+  "lctsr-Q8.png",
+  // TOSLS
+  "tosls-Q6.png",
+  "tosls-Q7.png",
+  "tosls-Q18.png",
+  "tosls-Q21.png",
+  "tosls-Q28.png",
+];
+
+// Image assignments confirmed by user (March 13, 2026)
+const GUESSES = [
+  { idx:0,  newname:"atta-Q1.png",     label:"ATTA Q1",       desc:"Mouse and cheese (binary identification)",         conf:true },
+  { idx:1,  newname:"atta-Q2.png",     label:"ATTA Q2",       desc:"Animal binary tree (decision tree)",               conf:true },
+  { idx:2,  newname:"atta-Q7.png",     label:"ATTA Q7",       desc:"Flowchart (algorithm tracing)",                    conf:true },
+  { idx:3,  newname:"atta-Q8.png",     label:"ATTA Q8",       desc:"O-P-Q-R-S graph (Euler path)",                    conf:true },
+  { idx:4,  newname:"atta-Q11.png",    label:"ATTA Q11",      desc:"Squirrel and stars (tree traversal)",              conf:true },
+  { idx:5,  newname:"atta-Q12.png",    label:"ATTA Q12",      desc:"Two robot mazes",                                  conf:true },
+  { idx:6,  newname:"atta-Q13-q.png",  label:"ATTA Q13 – question grid", desc:"Initial 4×4 black/white matrix",       conf:true },
+  { idx:7,  newname:"atta-Q13-a.png",  label:"ATTA Q13 – answer A",      desc:"Result matrix option A",               conf:true },
+  { idx:8,  newname:"atta-Q13-b.png",  label:"ATTA Q13 – answer B",      desc:"Result matrix option B (correct)",     conf:true },
+  { idx:9,  newname:"atta-Q13-c.png",  label:"ATTA Q13 – answer C",      desc:"Result matrix option C",               conf:true },
+  { idx:10, newname:"atta-Q13-d.png",  label:"ATTA Q13 – answer D",      desc:"Result matrix option D",               conf:true },
+  { idx:11, newname:"atta-Q16-1.png",  label:"ATTA Q16 – circuit",       desc:"A-B-C-D-E node circuit diagram",       conf:true },
+  { idx:12, newname:"atta-Q16-2.png",  label:"ATTA Q16 – states table",  desc:"Observed output states",               conf:true },
+  { idx:13, newname:"atta-Q16-3.png",  label:"ATTA Q16 – algorithms",    desc:"Three algorithm options",              conf:true },
+  { idx:14, newname:"atta-Q21-q1.png", label:"ATTA Q21 – part 1",        desc:"Method 1 example (colored circles)",   conf:true },
+  { idx:15, newname:"atta-Q21-q2.png", label:"ATTA Q21 – part 2",        desc:"Method 2 example",                     conf:true },
+  { idx:16, newname:"atta-Q21-q3.png", label:"ATTA Q21 – part 3",        desc:"New group of 6 (uncolored circles)",   conf:true },
+  { idx:17, newname:"atta-Q21-a1.png", label:"ATTA Q21 – answer A",      desc:"Method 2 graph option A",              conf:true },
+  { idx:18, newname:"atta-Q21-a2.png", label:"ATTA Q21 – answer B",      desc:"Method 2 graph option B",              conf:true },
+  { idx:19, newname:"atta-Q21-a3.png", label:"ATTA Q21 – answer C",      desc:"Method 2 graph option C",              conf:true },
+  { idx:20, newname:"atta-Q21-a4.png", label:"ATTA Q21 – answer D",      desc:"Method 2 graph option D (correct)",    conf:true },
+  { idx:21, newname:"atta-Q23.png",    label:"ATTA Q23",      desc:"Train switch routing diagram",                    conf:true },
+  { idx:22, newname:"atta-Q24.png",    label:"ATTA Q24",      desc:"7-person book-sharing graph (Tom/Bill/Ted...)",   conf:true },
+  { idx:23, newname:"atta-Q25-1.png",  label:"ATTA Q25 – initial arrows", desc:"Initial arrow set",                  conf:true },
+  { idx:24, newname:"atta-Q25-2.png",  label:"ATTA Q25 – target arrows",  desc:"Target arrow set",                   conf:true },
+  { idx:25, newname:"atta-Q26-1.png",  label:"ATTA Q26 – initial DNA",    desc:"Initial DNA sequence",               conf:true },
+  { idx:26, newname:"atta-Q26-2.png",  label:"ATTA Q26 – target DNA",     desc:"Target DNA sequence",                conf:true },
+  { idx:27, newname:"atta-Q27.png",    label:"ATTA Q27",      desc:"One robot maze (directional tracing)",            conf:true },
+  // LCTSR
+  { idx:28, newname:"lctsr-Q2.png",    label:"LCTSR Q2",  desc:"Two cylinders with marbles (marble size/water displacement)", conf:true },
+  { idx:29, newname:"lctsr-Q3.png",    label:"LCTSR Q3/Q4", desc:"Wide and narrow cylinders (proportional reasoning)", conf:true },
+  { idx:30, newname:"lctsr-Q5.png",    label:"LCTSR Q5",  desc:"Three pendulum strings with weights (control of variables)", conf:true },
+  { idx:31, newname:"lctsr-Q11.png",   label:"LCTSR Q11", desc:"Fruit fly tube experiment — red light",            conf:true },
+  { idx:32, newname:"lctsr-Q12.png",   label:"LCTSR Q12", desc:"Fruit fly tube experiment — blue light",           conf:true },
+  { idx:33, newname:"lctsr-Q8.png",    label:"LCTSR Q8",  desc:"Mice diagram (fat/thin × black/white tail)",       conf:true },  // TOSLS
+  { idx:34, newname:"tosls-Q6.png",    label:"TOSLS Q6",  desc:"Bar graph \u2014 tadpole abundance (pesticide \u00d7 predator)", conf:true },
+  { idx:35, newname:"tosls-Q7.png",    label:"TOSLS Q7",  desc:"Pie charts \u2014 tumor types in Type A vs Type B mice",  conf:true },
+  { idx:36, newname:"tosls-Q18.png",   label:"TOSLS Q18", desc:"Line graph \u2014 global meat consumption over 40 years",  conf:true },
+  { idx:37, newname:"tosls-Q21.png",   label:"TOSLS Q21", desc:"Line graph \u2014 violent crime + video game release dates", conf:true },
+  { idx:38, newname:"tosls-Q28.png",   label:"TOSLS Q28", desc:"Scatter plot \u2014 river shrimp abundance vs elevation",   conf:true },];
+
+const grid = document.getElementById('grid');
+FILES.forEach((file, i) => {
+  const g = GUESSES[i] || { newname:'???', label:`Image ${i+1}`, desc:'', conf:false };
+  const div = document.createElement('div');
+  div.className = `item ${g.conf ? 'confirmed' : 'uncertain'}`;
+  div.innerHTML = `
+    <div class="idx">#${i+1} of ${FILES.length}</div>
+    <div class="filename">${file}</div>
+    <img src="${file}" alt="${file}" loading="lazy">
+    <div class="guess">
+      <strong>${g.label}</strong>
+      <span class="badge ${g.conf ? 'sure' : 'unsure'}">${g.conf ? 'confident' : 'uncertain'}</span>
+      <div class="desc">${g.desc}</div>
+    </div>
+    <div class="newname">→ <span>${g.newname}</span></div>
+  `;
+  grid.appendChild(div);
+});
+</script>
+</body>
+</html>

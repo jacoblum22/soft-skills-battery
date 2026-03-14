@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Cognitive Battery</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f5f5f5; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+    .card { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); max-width: 680px; width: 100%; }
+    h1 { font-size: 1.6em; margin-bottom: 10px; }
+    .subtitle { font-size: 0.95em; color: #777; margin-bottom: 28px; }
+    p { line-height: 1.7; color: #333; margin-bottom: 12px; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 0.9em; }
+    th { background: #f0f4ff; padding: 8px 12px; text-align: left; border-bottom: 2px solid #dde; }
+    td { padding: 7px 12px; border-bottom: 1px solid #eee; }
+    label { display: block; font-weight: bold; margin-bottom: 6px; color: #333; }
+    input[type=text] { width: 100%; padding: 10px 14px; font-size: 1em; border: 2px solid #ccc; border-radius: 6px; outline: none; }
+    input[type=text]:focus { border-color: #4a6cf7; }
+    .consent { margin: 20px 0; padding: 14px 18px; background: #f9f9f9; border-radius: 6px; border: 1px solid #ddd; font-size: 0.9em; line-height: 1.65; color: #444; }
+    .consent-check { display: flex; align-items: flex-start; gap: 10px; margin-top: 12px; cursor: pointer; }
+    .consent-check input { margin-top: 3px; width: 18px; height: 18px; cursor: pointer; }
+    .btn { width: 100%; padding: 14px; font-size: 1.1em; background: #4a6cf7; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 20px; }
+    .btn:hover { background: #3a5ce0; }
+    .btn:disabled { background: #bbb; cursor: not-allowed; }
+    .error { color: #b00; font-size: 0.9em; margin-top: 6px; display: none; }
+    .break-note { background: #fff8e1; border: 1px solid #f0c040; border-radius: 6px; padding: 10px 14px; font-size: 0.88em; color: #5a4000; margin-bottom: 20px; }
+
+    /* Resume dialog */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; align-items: center; justify-content: center; }
+    .modal-overlay.visible { display: flex; }
+    .modal { background: white; padding: 32px; border-radius: 10px; max-width: 480px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+    .modal h2 { font-size: 1.2em; margin-bottom: 10px; }
+    .modal p { font-size: 0.95em; color: #444; line-height: 1.6; margin-bottom: 20px; }
+    .modal-btns { display: flex; gap: 10px; }
+    .modal-btns button { flex: 1; padding: 11px; border: none; border-radius: 6px; font-size: 0.95em; cursor: pointer; }
+    #btn-resume { background: #4a6cf7; color: white; }
+    #btn-resume:hover { background: #3a5ce0; }
+    #btn-fresh { background: #f0f0f0; color: #333; }
+    #btn-fresh:hover { background: #e0e0e0; }
+
+    /* Dev panel */
+    .dev-panel { margin-top: 32px; border-top: 2px dashed #f0a000; padding-top: 16px; }
+    .dev-toggle { background: none; border: none; color: #c07000; font-size: 0.85em; cursor: pointer; padding: 0; text-decoration: underline; }
+    .dev-body { display: none; margin-top: 12px; }
+    .dev-body.open { display: block; }
+    .dev-note { font-size: 0.8em; color: #888; margin-bottom: 10px; font-style: italic; }
+    .dev-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+    .dev-btn { padding: 7px 14px; background: #fff8e1; border: 1px solid #f0c040; border-radius: 5px; font-size: 0.85em; color: #5a3000; cursor: pointer; }
+    .dev-btn:hover { background: #ffeaa0; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>Cognitive Skills Battery</h1>
+  <div class="subtitle">Pilot study — approximately 95–110 minutes</div>
+
+  <p>Thank you for participating. This session consists of <strong>six short tasks</strong> that measure different aspects of thinking and decision-making. There are no right or wrong approaches — just try your best on each task.</p>
+
+  <table>
+    <thead><tr><th>Order</th><th>Task</th><th>Approx. time</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Attention task (button press, no writing)</td><td>~10 min</td></tr>
+      <tr><td>2</td><td>Word association (type answers)</td><td>~10 min</td></tr>
+      <tr><td>3</td><td>Algorithmic thinking (mixed questions)</td><td>~30–45 min</td></tr>
+      <tr><td colspan="3" style="text-align:center;color:#888;font-style:italic;padding:8px">— 5-minute break —</td></tr>
+      <tr><td>4</td><td>Decision task (click preferences)</td><td>~10 min</td></tr>
+      <tr><td>5</td><td>Scientific reasoning (multiple choice)</td><td>~15 min</td></tr>
+      <tr><td>6</td><td>Scientific literacy (multiple choice)</td><td>~15 min</td></tr>
+    </tbody>
+  </table>
+
+  <div class="break-note">⏸ After task 3, you will see a reminder to take a 5-minute break before continuing.</div>
+
+  <div style="margin-bottom:20px">
+    <label for="pid-input">Participant ID</label>
+    <input type="text" id="pid-input" placeholder="Enter your assigned participant ID">
+    <div class="error" id="pid-error">Please enter your participant ID to continue.</div>
+  </div>
+
+  <div class="consent">
+    <strong>Consent</strong><br>
+    Your responses will be recorded for research purposes. Participation is voluntary and anonymous. Data will be used only for the purposes of this pilot study. You may stop at any time.
+    <label class="consent-check">
+      <input type="checkbox" id="consent-check" onchange="checkReady()">
+      <span>I understand and agree to participate.</span>
+    </label>
+  </div>
+
+  <button class="btn" id="start-btn" disabled onclick="startBattery()">Begin Battery</button>
+</div>
+
+<!-- Resume dialog -->
+<div class="modal-overlay" id="resume-modal">
+  <div class="modal">
+    <h2>Continue where you left off?</h2>
+    <p id="resume-detail">Saved progress was found for this participant ID.</p>
+    <div class="modal-btns">
+      <button id="btn-resume" onclick="resumeSession()">Continue from checkpoint</button>
+      <button id="btn-fresh" onclick="freshStart()">Start fresh (discard saved data)</button>
+    </div>
+  </div>
+</div>
+
+<!-- Developer / testing skip panel -->
+<div class="card dev-panel" style="max-width:680px;margin:12px auto 0;">
+  <button class="dev-toggle" onclick="document.getElementById('dev-body').classList.toggle('open')">
+    ⚙ Developer: skip to task
+  </button>
+  <div class="dev-body" id="dev-body">
+    <p class="dev-note">Sets participant_id to "DEV" and jumps directly to that task (clears all session data first).</p>
+    <div class="dev-btns">
+      <button class="dev-btn" onclick="devSkip('01-ant.html')">1 · ANT</button>
+      <button class="dev-btn" onclick="devSkip('02-cra.html')">2 · CRA (Word Puzzles)</button>
+      <button class="dev-btn" onclick="devSkip('03-atta.html')">3 · ATTA (Algorithmic)</button>
+      <button class="dev-btn" onclick="devSkip('04-ellsberg.html')">4 · Ellsberg</button>
+      <button class="dev-btn" onclick="devSkip('05-lctsr.html')">5 · LCTSR</button>
+      <button class="dev-btn" onclick="devSkip('06-tosls.html')">6 · TOSLS</button>
+      <button class="dev-btn" onclick="devSkip('results.html')">Results page</button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('pid-input').addEventListener('input', checkReady);
+
+const ALL_KEYS = ['ant_summary','ant_raw','cra_summary','cra_trials','atta_summary','atta_trials',
+  'ellsberg_summary','ellsberg_trials','lctsr_summary','lctsr_trials','tosls_summary','tosls_trials',
+  'battery_checkpoint'];
+
+function checkReady() {
+  const pid = document.getElementById('pid-input').value.trim();
+  const consented = document.getElementById('consent-check').checked;
+  document.getElementById('start-btn').disabled = !(pid && consented);
+}
+
+function startBattery() {
+  const pid = document.getElementById('pid-input').value.trim();
+  if (!pid) {
+    document.getElementById('pid-error').style.display = 'block';
+    return;
+  }
+  // Check for saved checkpoint for this participant
+  let cp = null;
+  try { cp = JSON.parse(localStorage.getItem('battery_checkpoint')); } catch {}
+  if (cp && cp.participantId === pid && cp.task) {
+    const taskNames = {
+      '01-ant.html':'Attention Task','02-cra.html':'Word Puzzles',
+      '03-atta.html':'Algorithmic Thinking','04-ellsberg.html':'Decision Task',
+      '05-lctsr.html':'Scientific Reasoning','06-tosls.html':'Scientific Literacy'
+    };
+    const taskLabel = taskNames[cp.task] || cp.task;
+    const saved = new Date(cp.timestamp).toLocaleString();
+    document.getElementById('resume-detail').textContent =
+      `Saved progress found: ${taskLabel}, question ${(cp.itemIdx||0)+1}. Last saved: ${saved}.`;
+    localStorage.setItem('participant_id', pid);
+    document.getElementById('resume-modal').classList.add('visible');
+    return;
+  }
+  freshStart();
+}
+
+function resumeSession() {
+  document.getElementById('resume-modal').classList.remove('visible');
+  let cp = JSON.parse(localStorage.getItem('battery_checkpoint'));
+  window.location.href = cp.task;
+}
+
+function freshStart() {
+  document.getElementById('resume-modal').classList.remove('visible');
+  const pid = document.getElementById('pid-input').value.trim();
+  localStorage.setItem('participant_id', pid);
+  ALL_KEYS.forEach(k => localStorage.removeItem(k));
+  // Set initial checkpoint so resume works even if ANT is interrupted
+  localStorage.setItem('battery_checkpoint', JSON.stringify({
+    participantId: pid, task: '01-ant.html', itemIdx: 0, responses: [], timestamp: new Date().toISOString()
+  }));
+  window.location.href = '01-ant.html';
+}
+
+function devSkip(task) {
+  const pid = 'DEV';
+  localStorage.setItem('participant_id', pid);
+  ALL_KEYS.forEach(k => localStorage.removeItem(k));
+  localStorage.setItem('battery_checkpoint', JSON.stringify({
+    participantId: pid, task, itemIdx: 0, responses: [], timestamp: new Date().toISOString()
+  }));
+  window.location.href = task;
+}
+</script>
+</body>
+</html>

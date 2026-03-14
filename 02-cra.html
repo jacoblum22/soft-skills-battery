@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CRA – Compound Remote Associates</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .screen { display: none; max-width: 700px; width: 100%; }
+    .screen.active { display: block; }
+
+    /* Instructions */
+    .instructions { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .instructions h1 { font-size: 1.6em; margin-bottom: 20px; }
+    .instructions p { line-height: 1.7; margin-bottom: 14px; color: #333; }
+    .instructions .example { background: #f0f4ff; border-left: 4px solid #4a6cf7; padding: 14px 18px; margin: 16px 0; border-radius: 4px; font-size: 1.05em; }
+    .instructions .example strong { display: block; font-size: 1.15em; letter-spacing: 1px; margin-bottom: 6px; }
+    .btn { display: inline-block; margin-top: 20px; padding: 12px 32px; background: #4a6cf7; color: white; border: none; border-radius: 6px; font-size: 1.05em; cursor: pointer; }
+    .btn:hover { background: #3a5ce0; }
+
+    /* Trial */
+    .trial-container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; }
+    .progress { font-size: 0.9em; color: #888; margin-bottom: 24px; }
+    .cue-words { font-size: 2em; font-weight: bold; letter-spacing: 4px; color: #222; margin-bottom: 30px; word-spacing: 12px; }
+    .timer-bar-wrap { background: #eee; border-radius: 4px; height: 10px; margin-bottom: 24px; overflow: hidden; }
+    .timer-bar { height: 100%; background: #4a6cf7; transition: width 1s linear, background 0.5s; border-radius: 4px; }
+    .timer-label { font-size: 0.95em; color: #555; margin-bottom: 20px; }
+    .answer-row { display: flex; gap: 10px; justify-content: center; }
+    #answer-input {
+      padding: 10px 16px; font-size: 1.1em; border: 2px solid #ccc; border-radius: 6px;
+      width: 280px; outline: none; text-transform: lowercase;
+    }
+    #answer-input:focus { border-color: #4a6cf7; }
+    #submit-btn { padding: 10px 20px; font-size: 1.05em; background: #4a6cf7; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    #submit-btn:hover { background: #3a5ce0; }
+    .feedback { margin-top: 18px; font-size: 1.05em; min-height: 28px; }
+    .feedback.correct { color: #2a7a2a; }
+    .feedback.incorrect { color: #b00; }
+    .feedback.timeout  { color: #d06000; }
+
+    /* Results */
+    .results-container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .results-container h1 { font-size: 1.5em; margin-bottom: 20px; }
+    .score-box { text-align: center; padding: 24px; background: #f0f4ff; border-radius: 8px; margin-bottom: 24px; }
+    .score-box .big { font-size: 2.5em; font-weight: bold; color: #4a6cf7; }
+    .score-box .sub { font-size: 1em; color: #555; margin-top: 6px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+    th { background: #f0f4ff; text-align: left; padding: 8px 10px; border-bottom: 2px solid #dde; }
+    td { padding: 7px 10px; border-bottom: 1px solid #eee; }
+    td.correct-cell { color: #2a7a2a; font-weight: bold; }
+    td.incorrect-cell { color: #b00; }
+    .next-btn { margin-top: 24px; width: 100%; padding: 14px; font-size: 1.1em; background: #4a6cf7; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    .next-btn:hover { background: #3a5ce0; }
+  </style>
+</head>
+<body>
+
+<!-- Instructions -->
+<div id="screen-instructions" class="screen active">
+  <div class="instructions">
+    <h1>Word Association Task</h1>
+    <p>In each round, you will see <strong>three words</strong>. Your task is to find a <strong>single word</strong> that can be combined with all three to make a common compound word or phrase.</p>
+    <div class="example">
+      <strong>PINE &nbsp;/&nbsp; CRAB &nbsp;/&nbsp; SAUCE</strong>
+      Answer: <em>apple</em> &nbsp;(pineapple, crab apple, applesauce)
+    </div>
+    <p>You have <strong>15 seconds</strong> per item. Type your answer and press Enter (or click Submit). If you can't think of the answer, you may skip — the next item will appear automatically when time runs out.</p>
+    <p>Type only one word. Spelling counts. Work as quickly and accurately as you can.</p>
+    <p>There are <strong>30 items</strong> in total (~10 minutes).</p>
+    <button class="btn" onclick="startTask()">Begin</button>
+  </div>
+</div>
+
+<!-- Trial -->
+<div id="screen-trial" class="screen">
+  <div class="trial-container">
+    <div class="progress" id="progress-label">Item 1 of 30</div>
+    <div class="cue-words" id="cue-display">WORD / WORD / WORD</div>
+    <div class="timer-bar-wrap"><div class="timer-bar" id="timer-bar"></div></div>
+    <div class="timer-label" id="timer-label">15</div>
+    <div class="answer-row">
+      <input type="text" id="answer-input" placeholder="type answer..." autocomplete="off" autocorrect="off" spellcheck="false" />
+      <button id="submit-btn" onclick="submitAnswer()">Submit</button>
+    </div>
+    <div class="feedback" id="feedback"></div>
+    <div id="dev-hint" style="display:none;margin-top:8px;padding:6px 12px;background:#fff3cd;border:1px solid #f0c040;border-radius:5px;font-size:0.85em;color:#5a3000;"></div>
+  </div>
+</div>
+
+<!-- Results -->
+<div id="screen-results" class="screen">
+  <div class="results-container">
+    <h1>Word Association — Complete</h1>
+    <div class="score-box">
+      <div class="big" id="score-display">—</div>
+      <div class="sub" id="rt-display">Mean solution time: —</div>
+    </div>
+    <table id="results-table">
+      <thead><tr><th>#</th><th>Cues</th><th>Your answer</th><th>Correct answer</th><th>Result</th><th>Time (s)</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <button class="next-btn" onclick="proceedNext()">Continue to Next Task →</button>
+  </div>
+</div>
+
+<script>
+// ─── Item bank: 30 items stratified by difficulty (randomised at runtime) ────
+// Difficulty tiers based on Bowden & Jung-Beeman (2003) % solving at 15 s:
+// Easy (76–92%), Medium (47–68%), Hard (18–41%)
+// Format: [cue1, cue2, cue3, answer, difficulty, solveRate15s]
+const ITEMS_BANK = [
+  // Easy
+  ['CREAM','SKATE','WATER',    ['ice'],         'easy', 92],
+  ['LOSER','THROAT','SPOT',    ['sore'],        'easy', 86],
+  ['COTTAGE','SWISS','CAKE',   ['cheese'],      'easy', 96],
+  ['SHOW','LIFE','ROW',        ['boat'],        'easy', 82],
+  ['NIGHT','WRIST','STOP',     ['watch'],       'easy', 82],
+  ['DUCK','FOLD','DOLLAR',     ['bill'],        'easy', 80],
+  ['ROCKING','WHEEL','HIGH',   ['chair'],       'easy', 80],
+  ['DEW','COMB','BEE',         ['honey'],       'easy', 80],
+  ['FOUNTAIN','BAKING','POP',  ['soda'],        'easy', 78],
+  ['PRESERVE','RANGER','TROPICAL', ['forest'],  'easy', 76],
+  // Medium
+  ['CRACKER','FLY','FIGHTER',  ['fire'],        'medium', 68],
+  ['CANE','DADDY','PLUM',      ['sugar'],       'medium', 66],
+  ['DREAM','BREAK','LIGHT',    ['day'],         'medium', 64],
+  ['FISH','MINE','RUSH',       ['gold'],        'medium', 63],
+  ['POLITICAL','SURPRISE','LINE', ['party'],    'medium', 61],
+  ['MEASURE','WORM','VIDEO',   ['tape'],        'medium', 58],
+  ['SENSE','COURTESY','PLACE', ['common'],      'medium', 54],
+  ['WORM','SHELF','END',       ['book'],        'medium', 53],
+  ['FLOWER','FRIEND','SCOUT',  ['girl'],        'medium', 51],
+  ['RIVER','NOTE','ACCOUNT',   ['bank'],        'medium', 50],
+  // Hard
+  ['SLEEPING','BEAN','TRASH',  ['bag'],         'hard', 41],
+  ['BOOT','SUMMER','GROUND',   ['camp'],        'hard', 33],
+  ['MILL','TOOTH','DUST',      ['saw'],         'hard', 33],
+  ['MAIN','SWEEPER','LIGHT',   ['street'],      'hard', 33],
+  ['DOWN','QUESTION','CHECK',  ['mark'],        'hard', 28],
+  ['PINE','CRAB','SAUCE',      ['apple'],       'hard', 26],
+  ['MASTER','TOSS','FINGER',   ['ring'],        'hard', 25],
+  ['RAIN','TEST','STOMACH',    ['acid'],        'hard', 22],
+  ['FORK','DARK','MAN',        ['pitch'],       'hard', 18],
+  ['TEST','RUNNER','MAP',      ['road'],        'hard', 18],
+];
+
+const TIME_LIMIT = 15; // seconds per item
+const FEEDBACK_DURATION = 1200; // ms to show feedback before next item
+
+let items = [];  // shuffled copy
+let currentIdx = 0;
+let trialData = [];
+let timerInterval = null;
+let timeRemaining = TIME_LIMIT;
+let trialStartTime = null;
+let answerSubmitted = false;
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function saveCheckpoint() {
+  const pid = localStorage.getItem('participant_id') || '';
+  localStorage.setItem('battery_checkpoint', JSON.stringify({
+    participantId: pid, task: '02-cra.html',
+    itemIdx: currentIdx, itemOrder: items.map(i => i[0]+'/'+i[1]+'/'+i[2]),
+    responses: trialData, timestamp: new Date().toISOString()
+  }));
+}
+
+function startTask() {
+  // Check for a saved checkpoint for this task
+  let cp = null;
+  try { cp = JSON.parse(localStorage.getItem('battery_checkpoint')); } catch {}
+  const pid = localStorage.getItem('participant_id') || '';
+  if (cp && cp.participantId === pid && cp.task === '02-cra.html' && cp.responses && cp.responses.length > 0) {
+    // Restore: rebuild the items array in the same order, then skip ahead
+    items = shuffle(ITEMS_BANK);  // new shuffle for remaining items (can't perfectly restore order without full order save)
+    currentIdx = cp.itemIdx;
+    trialData = cp.responses;
+  } else {
+    items = shuffle(ITEMS_BANK);
+  }
+  showScreen('screen-trial');
+  loadTrial();
+}
+
+function loadTrial() {
+  answerSubmitted = false;
+  clearInterval(timerInterval);
+
+  const item = items[currentIdx];
+  document.getElementById('progress-label').textContent = `Item ${currentIdx + 1} of ${items.length}`;
+  document.getElementById('cue-display').textContent = `${item[0]}  /  ${item[1]}  /  ${item[2]}`;
+  document.getElementById('answer-input').value = '';
+  document.getElementById('answer-input').disabled = false;
+  document.getElementById('submit-btn').disabled = false;
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('feedback').className = 'feedback';
+
+  // Reset timer bar
+  const bar = document.getElementById('timer-bar');
+  bar.style.transition = 'none';
+  bar.style.width = '100%';
+  bar.style.background = '#4a6cf7';
+  void bar.offsetWidth; // reflow
+
+  timeRemaining = TIME_LIMIT;
+  document.getElementById('timer-label').textContent = timeRemaining;
+
+  // Animate bar
+  setTimeout(() => {
+    bar.style.transition = `width ${TIME_LIMIT}s linear`;
+    bar.style.width = '0%';
+  }, 50);
+
+  trialStartTime = performance.now();
+
+  timerInterval = setInterval(() => {
+    timeRemaining--;
+    document.getElementById('timer-label').textContent = timeRemaining;
+    if (timeRemaining <= 5) {
+      document.getElementById('timer-bar').style.background = '#e05030';
+    }
+    if (timeRemaining <= 0) {
+      clearInterval(timerInterval);
+      handleTimeout();
+    }
+  }, 1000);
+
+  document.getElementById('answer-input').focus();
+
+  // DEV mode: show answer key
+  const devHint = document.getElementById('dev-hint');
+  if (localStorage.getItem('participant_id') === 'DEV') {
+    devHint.style.display = 'block';
+    devHint.innerHTML = '<details><summary style="cursor:pointer;color:#5a3000;">&#x2139; DEV: Reveal answer</summary><span>' + item[3].join(' / ') + '</span></details>';
+  } else {
+    devHint.style.display = 'none';
+  }
+}
+
+document.getElementById('answer-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitAnswer();
+});
+
+function submitAnswer() {
+  if (answerSubmitted) return;
+  const elapsed = (performance.now() - trialStartTime) / 1000;
+  const raw = document.getElementById('answer-input').value.trim().toLowerCase();
+  recordResponse(raw, elapsed, false);
+}
+
+function handleTimeout() {
+  if (answerSubmitted) return;
+  const raw = document.getElementById('answer-input').value.trim().toLowerCase();
+  recordResponse(raw, TIME_LIMIT, true);
+}
+
+function recordResponse(raw, elapsed, timeout) {
+  answerSubmitted = true;
+  clearInterval(timerInterval);
+
+  document.getElementById('answer-input').disabled = true;
+  document.getElementById('submit-btn').disabled = true;
+
+  const item = items[currentIdx];
+  const validAnswers = item[3]; // array
+  const correct = validAnswers.includes(raw);
+
+  trialData.push({
+    item_num: currentIdx + 1,
+    cue1: item[0], cue2: item[1], cue3: item[2],
+    correct_answer: validAnswers.join('/'),
+    difficulty: item[4],
+    solve_rate_15s: item[5],
+    response: raw || '(no answer)',
+    is_correct: correct,
+    solution_time: timeout && !raw ? null : parseFloat(elapsed.toFixed(3)),
+    timed_out: timeout,
+  });
+  saveCheckpoint();  // incremental save
+
+  const fb = document.getElementById('feedback');
+  if (timeout && !raw) {
+    fb.textContent = `Time's up! Answer: ${validAnswers[0]}`;
+    fb.className = 'feedback timeout';
+  } else if (correct) {
+    fb.textContent = '✓ Correct!';
+    fb.className = 'feedback correct';
+  } else {
+    fb.textContent = `✗ Answer: ${validAnswers[0]}`;
+    fb.className = 'feedback incorrect';
+  }
+
+  setTimeout(() => {
+    currentIdx++;
+    if (currentIdx < items.length) {
+      loadTrial();
+    } else {
+      showResults();
+    }
+  }, FEEDBACK_DURATION);
+}
+
+function showResults() {
+  const correct = trialData.filter(t => t.is_correct);
+  const accuracy = Math.round((correct.length / trialData.length) * 100);
+  const solveTimes = trialData
+    .filter(t => t.is_correct && t.solution_time !== null)
+    .map(t => t.solution_time);
+  const meanRT = solveTimes.length
+    ? (solveTimes.reduce((a, b) => a + b, 0) / solveTimes.length).toFixed(1)
+    : '—';
+
+  document.getElementById('score-display').textContent = `${correct.length} / ${trialData.length} correct (${accuracy}%)`;
+  document.getElementById('rt-display').textContent =
+    solveTimes.length ? `Mean solution time (correct items): ${meanRT} s` : 'No correct items to average';
+
+  // Build table
+  const tbody = document.querySelector('#results-table tbody');
+  tbody.innerHTML = '';
+  trialData.forEach(t => {
+    const tr = document.createElement('tr');
+    const resultClass = t.is_correct ? 'correct-cell' : 'incorrect-cell';
+    const resultText = t.timed_out && !t.response.startsWith('(') ? 'Timeout (answered late)' :
+                       t.timed_out ? 'Timeout' :
+                       t.is_correct ? '✓' : '✗';
+    const timeStr = t.solution_time !== null ? t.solution_time + ' s' : '—';
+    tr.innerHTML = `
+      <td>${t.item_num}</td>
+      <td>${t.cue1} / ${t.cue2} / ${t.cue3}</td>
+      <td>${t.response}</td>
+      <td>${t.correct_answer}</td>
+      <td class="${resultClass}">${resultText}</td>
+      <td>${timeStr}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  // Save to localStorage
+  const summary = {
+    task: 'CRA',
+    n_items: trialData.length,
+    n_correct: correct.length,
+    accuracy_pct: accuracy,
+    mean_solution_time_correct: meanRT,
+    timestamp: new Date().toISOString(),
+  };
+  localStorage.setItem('cra_summary', JSON.stringify(summary));
+  localStorage.setItem('cra_trials', JSON.stringify(trialData));
+
+  showScreen('screen-results');
+}
+
+function proceedNext() {
+  // Advance checkpoint to next task
+  const pid = localStorage.getItem('participant_id') || '';
+  localStorage.setItem('battery_checkpoint', JSON.stringify({
+    participantId: pid, task: '03-atta.html', itemIdx: 0, responses: [], timestamp: new Date().toISOString()
+  }));
+  window.location.href = '03-atta.html';
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+</script>
+</body>
+</html>

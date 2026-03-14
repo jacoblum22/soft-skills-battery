@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ATTA – Algorithmic Thinking</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; display: flex; justify-content: center; }
+    .screen { display: none; max-width: 780px; width: 100%; }
+    .screen.active { display: block; }
+
+    /* Instructions / Results wrappers */
+    .card { background: white; padding: 36px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-top: 20px; }
+    h1 { font-size: 1.5em; margin-bottom: 16px; }
+    h2 { font-size: 1.15em; margin-bottom: 10px; color: #333; }
+    p { line-height: 1.65; margin-bottom: 12px; color: #333; }
+    ul { margin: 0 0 12px 22px; line-height: 1.7; color: #333; }
+    .btn { padding: 11px 28px; background: #4a6cf7; color: white; border: none; border-radius: 6px; font-size: 1em; cursor: pointer; margin-top: 16px; }
+    .btn:hover { background: #3a5ce0; }
+    .btn-wide { width: 100%; padding: 13px; font-size: 1.05em; margin-top: 24px; background: #4a6cf7; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    .btn-wide:hover { background: #3a5ce0; }
+
+    /* Question card */
+    .q-meta { font-size: 0.88em; color: #888; margin-bottom: 18px; }
+    .q-body { font-size: 1em; line-height: 1.7; color: #222; margin-bottom: 16px; }
+    .q-body pre { background: #f4f4f4; padding: 10px 14px; border-radius: 4px; font-size: 0.92em; white-space: pre-wrap; margin: 10px 0; }
+
+    /* Image area */
+    .diagram { text-align: center; margin: 14px 0; }
+    .diagram img { max-width: 100%; border: 1px solid #ddd; border-radius: 4px; }
+    .img-missing { background: #fff3cd; border: 1px solid #f0c040; color: #856404; padding: 10px 14px; border-radius: 4px; font-size: 0.9em; margin: 10px 0; }
+
+    /* MC options */
+    .mc-option { display: block; padding: 10px 14px; margin: 6px 0; background: #f9f9f9; border: 2px solid #ddd; border-radius: 6px; cursor: pointer; font-size: 0.97em; transition: border-color 0.15s, background 0.15s; }
+    .mc-option:hover { border-color: #4a6cf7; background: #f0f3ff; }
+    .mc-option.selected { border-color: #4a6cf7; background: #e8eeff; }
+
+    /* Text inputs */
+    .text-input { width: 100%; padding: 9px 12px; font-size: 1em; border: 2px solid #ccc; border-radius: 6px; outline: none; margin: 4px 0; }
+    .text-input:focus { border-color: #4a6cf7; }
+    .input-row { display: flex; gap: 8px; align-items: center; margin: 6px 0; }
+    .input-row label { min-width: 80px; font-size: 0.9em; color: #555; }
+    .input-row .text-input { flex: 1; }
+    .blanks-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
+    textarea.text-input { height: 100px; resize: vertical; }
+
+    /* Item #12 and #27 grid */
+    .blanks-inline { display: flex; gap: 12px; flex-wrap: wrap; margin: 10px 0; }
+    .blank-item { display: flex; flex-direction: column; gap: 4px; }
+    .blank-item label { font-size: 0.8em; color: #666; }
+    .blank-item input { width: 120px; padding: 7px 10px; border: 2px solid #ccc; border-radius: 6px; text-transform: uppercase; font-size: 0.95em; }
+    .blank-item input:focus { border-color: #4a6cf7; outline: none; }
+
+    /* Image-option MC (Q13, Q21) */
+    .img-options-row { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
+    .img-mc-option { background: #f9f9f9; border: 3px solid #ddd; border-radius: 6px; cursor: pointer; padding: 6px; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: border-color 0.15s, background 0.15s; flex: 1 1 calc(50% - 10px); max-width: calc(50% - 10px); }
+    .img-mc-option:hover { border-color: #4a6cf7; background: #f0f3ff; }
+    .img-mc-option.selected { border-color: #4a6cf7; background: #e8eeff; }
+    .img-mc-option img { max-width: 100%; max-height: 200px; object-fit: contain; }
+    .img-opt-label { font-weight: bold; font-size: 1em; color: #4a6cf7; }
+
+    /* Score table */
+    table { width: 100%; border-collapse: collapse; font-size: 0.88em; margin-top: 12px; }
+    th { background: #f0f4ff; padding: 8px 10px; text-align: left; border-bottom: 2px solid #dde; }
+    td { padding: 7px 10px; border-bottom: 1px solid #eee; vertical-align: top; }
+    .pass { color: #2a7a2a; font-weight: bold; }
+    .fail { color: #b00; font-weight: bold; }
+    .manual { color: #7a5a00; font-weight: bold; }
+    .score-box { text-align: center; background: #f0f4ff; padding: 20px; border-radius: 8px; margin: 16px 0; }
+    .score-box .big { font-size: 2.3em; font-weight: bold; color: #4a6cf7; }
+    .score-box .sub { font-size: 0.95em; color: #555; margin-top: 4px; }
+  </style>
+</head>
+<body>
+
+<!-- Instructions -->
+<div id="screen-instructions" class="screen active">
+  <div class="card">
+    <h1>Algorithmic Thinking</h1>
+    <p>This section contains <strong>20 problems</strong> about algorithms, logic, and computational reasoning. Some questions are multiple choice; others ask you to fill in blanks or write a short explanation.</p>
+    <ul>
+      <li>Read each question carefully. Some include a diagram — examine it before answering.</li>
+      <li>There is no time limit on individual questions, but try to work at a steady pace.</li>
+      <li>For multiple-choice questions, click the option you think is correct.</li>
+      <li>For fill-in questions, type your answers in the boxes provided.</li>
+    </ul>
+    <p>This section takes approximately <strong>30–45 minutes</strong>.</p>
+    <button class="btn" onclick="startATTA()">Begin</button>
+  </div>
+</div>
+
+<!-- Question screen -->
+<div id="screen-question" class="screen">
+  <div class="card">
+    <div class="q-meta" id="q-meta">Question 1 of 20</div>
+    <div id="q-content"></div>
+    <button class="btn-wide" id="next-btn" onclick="nextQuestion()">Next →</button>
+  </div>
+</div>
+
+<!-- Results -->
+<div id="screen-results" class="screen">
+  <div class="card">
+    <h1>Algorithmic Thinking — Complete</h1>
+    <div class="score-box">
+      <div class="big" id="score-auto">—</div>
+      <div class="sub" id="score-sub">—</div>
+    </div>
+    <table>
+      <thead><tr><th>Q</th><th>Topic</th><th>Type</th><th>Result</th><th>Answer given</th><th>Correct answer</th></tr></thead>
+      <tbody id="results-tbody"></tbody>
+    </table>
+    <button class="btn-wide" onclick="proceedNext()">Continue to Next Task →</button>
+  </div>
+</div>
+
+<script>
+// ─── Item definitions ─────────────────────────────────────────────────────
+// type: 'mc' | 'numeric' | 'text1' | 'text2' | 'text4' | 'text8' | 'text6' | 'textarea' | 'cheese'
+// needsImage: filename in img/ folder, or null
+// For mc: options = ['A. ...','B. ...','C. ...','D. ...'], answer = 'A'|'B'|'C'|'D'
+// For open-ended: answer = expected value(s), scored = 'auto' | 'manual'
+
+const ITEMS = [
+  // ─── #1 ──────────────────────────────────────────────────────────────────
+  {
+    id: 1, type: 'cheese', needsImage: 'atta-Q1.png',
+    topic: 'Binary identification',
+    question: `<p>You have four different cheeses and one of them has a tasteless and odorless bacterium. This cheese causes symptoms of food-poisoning 24 hours after ingesting it. You want to find out which cheese it is, so you decide to use mice to taste them. But, you only have two mice left in your lab and your deadline to find the poisoned cheese is exactly 24 hours from now! You can assign every mouse the number of cheeses that you want. How would you do it?</p>`,
+    labelA: 'I would assign mouse 1 to cheese/s:', labelB: 'I would assign mouse 2 to cheese/s:',
+    answer: 'RUBRIC', answerdisplay: 'Any valid solution where the two mice share exactly one cheese, each mouse eats one unique cheese, and one cheese is left uneaten. E.g. Mouse 1: 1+2; Mouse 2: 2+3 (cheese 4 left aside).',
+    scored: 'manual',
+    rubric: 'Give 1 pt if: mice share exactly one cheese, each mouse eats one unique cheese, one cheese is left uneaten.'
+  },
+  // ─── #2 ──────────────────────────────────────────────────────────────────
+  {
+    id: 2, type: 'mc', needsImage: 'atta-Q2.png',
+    topic: 'Binary search / decision trees',
+    question: `<p>Imagine that someone picks one of these animals and you have to guess it posing only binary questions. Binary questions are those whose answer can only be yes or no, like “does it have jointed legs?” Assuming that you follow an optimal strategy that reduces the number of questions, what is the average number of questions necessary to guess an animal uniformly picked at random from this chart?</p>`,
+    options: ['A. 2.33', 'B. 2.67', 'C. 3', 'D. 6'],
+    answer: 'B', scored: 'auto'
+  },
+  // ─── #3 ──────────────────────────────────────────────────────────────────
+  {
+    id: 3, type: 'numeric', needsImage: null,
+    topic: 'Optimal search strategy',
+    question: `<p>You have been given 9 coins of the same value, but one of them is fake which you could tell because it is lighter than the rest. You have a balance to weigh the coins, and each weighing can result in “the balance leans to the right”, “the balance leans to the left”, or “the balance rests stable”. Assuming you are following an optimal strategy to reduce the number of weighings, how many weighings are necessary to identify the fake coin?</p>`,
+    placeholder: 'Enter a number', answer: '2', scored: 'auto'
+  },
+  // ─── #6 ──────────────────────────────────────────────────────────────────
+  {
+    id: 6, type: 'mc', needsImage: null,
+    topic: 'Algorithm correctness (greedy)',
+    question: `<p>You are carrying out a series of astronomical observations on the Orion constellation. You want to observe, using the same telescope, all the stars included in this constellation. Setting up a new position for the telescope takes time which you want to optimize; so, you decide that you will observe all the stars following the shortest path that connects all of them. To do that, imagine someone proposes the following algorithm:</p>
+    <pre>1. Start from a random star
+2. If there’s still a star to observe, go to the nearest non-observed star</pre>
+    <p>What is fundamentally wrong with this algorithm?</p>`,
+    options: [
+      'A. The algorithm may eventually choose longer paths',
+      'B. The starting star should not be randomly chosen, but should be the one at the centre of the map',
+      'C. The algorithm will leave non-observed stars in the path',
+      'D. There’s nothing wrong with this algorithm, it will always choose the shortest path'
+    ],
+    answer: 'A', scored: 'auto'
+  },
+  // ─── #7 ──────────────────────────────────────────────────────────────────
+  {
+    id: 7, type: 'mc', needsImage: 'atta-Q7.png',
+    topic: 'Algorithm tracing',
+    question: `<p>Olivia is studying the climate in her village and, over the last year, she has measured the temperature at the same time every day. She has created a list with all the temperatures she has collected so far. She prepares the following algorithm to analyze her list. What is the output she will get?</p>`,
+    options: [
+      'A. The percentage of positive temperatures in the list',
+      'B. The average of the positive temperatures in the list',
+      'C. The number of positive temperatures in the list',
+      'D. The sum of the positive temperatures in the list'
+    ],
+    answer: 'B', scored: 'auto'
+  },
+  // ─── #8 ──────────────────────────────────────────────────────────────────
+  {
+    id: 8, type: 'mc', needsImage: 'atta-Q8.png',
+    topic: 'Graph traversal (Euler path)',
+    question: `<p>This is a path composed of 5 vertices: O, P, Q, R, S. Every vertex is connected to other vertices through one or more lines. You want to connect all the vertices of this path with your pencil in such a way that you pass only once through <strong>ALL THE LINES</strong> of this sketch and without lifting your pencil. You can pass more than once through every vertex, though. Where would you start the path?</p>`,
+    options: [
+      'A. Always on a vertex with the lowest number of lines',
+      'B. Always on a vertex with an even number of lines',
+      'C. Always on a vertex with an odd number of lines',
+      'D. One cannot connect all vertices in figures like this'
+    ],
+    answer: 'C', scored: 'auto'
+  },
+  // ─── #9 ──────────────────────────────────────────────────────────────────
+  {
+    id: 9, type: 'mc', needsImage: null,
+    topic: 'Algorithm termination',
+    question: `<p>We have this game:</p>
+    <ul>
+      <li>There are four players (P, Q, R, S): one of them is pointing at him/herself, and three of them are pointing at any other player.</li>
+      <li>Player P gets the ball.</li>
+      <li>While the ball-holder is <em>not</em> pointing at him/herself: the ball-holder passes the ball to the player that s/he is pointing at.</li>
+      <li>If the ball-holder <em>is</em> pointing at him/herself: s/he drops the ball and the game finishes.</li>
+    </ul>
+    <p>We can state that:</p>`,
+    options: [
+      'A. This game will go on forever',
+      'B. This game will eventually stop because someone will drop the ball',
+      'C. This game will stop when player P gets the ball again',
+      'D. We don\'t know whether this game will ever stop'
+    ],
+    answer: 'D', scored: 'auto'
+  },
+  // ─── #11 ─────────────────────────────────────────────────────────────────
+  {
+    id: 11, type: 'mc', needsImage: 'atta-Q11.png',
+    topic: 'Tree traversal complexity',
+    question: `<p>Let’s examine the minimum distance the squirrel must travel to pick up all the stars. How many branches does it need to go through until it picks up the last star?</p>`,
+    options: [
+      'A. Number of stars × levels of the tree',
+      'B. 2 × number of branches − number of levels of the tree',
+      'C. (Number of levels of the tree)²',
+      'D. Number of branches + number of levels of the tree'
+    ],
+    answer: 'B', scored: 'auto'
+  },
+  // ─── #12 ─────────────────────────────────────────────────────────────────
+  {
+    id: 12, type: 'text4', needsImage: 'atta-Q12.png',
+    topic: 'Single algorithm for two inputs',
+    question: `<p>Describe one single algorithm that will get both robots out of their mazes in exactly 3 instructions. Both robots execute first instruction 1, then instruction 2, and then instruction 3.</p>
+    <p>Fill in the blanks with one of the following eight words (coordinates are set according to how you see the maze):<br>
+    <strong>NORTH, NORTH-WEST, NORTH-EAST, WEST, EAST, SOUTH-WEST, SOUTH, SOUTH-EAST</strong></p>
+    <pre>1. If the ‘out’ square is to the SOUTH-EAST of the robot, keep advancing squares to the EAST until
+   the robot collides with a wall.
+   Else go to the [blank 1] until the robot collides with a wall.
+2. When the robot collides:
+   If the ‘out’ square is to the SOUTH-WEST, keep advancing to the [blank 2] until collision.
+   Else go to the SOUTH until collision.
+3. When the robot collides:
+   If the ‘out’ square is to the [blank 3] of the robot, keep advancing to WEST until exit.
+   Else go to [blank 4] until exit.</pre>`,
+    labels: ['Blank 1 (direction):', 'Blank 2 (direction):', 'Blank 3 (direction):', 'Blank 4 (direction):'],
+    answers: ['WEST', 'SOUTH', 'WEST', 'EAST'], scored: 'auto'
+  },
+  // ─── #13 ─────────────────────────────────────────────────────────────────
+  {
+    id: 13, type: 'mc', needsImage: 'atta-Q13-q.png',
+    imageOptions: ['atta-Q13-a.png', 'atta-Q13-b.png', 'atta-Q13-c.png', 'atta-Q13-d.png'],
+    topic: 'Array/matrix operations',
+    question: `<p>A collection of elements is shown above with 2 dimensions: rows and columns. A black square indicates a 1, and a white square indicates a 0. Imagine that we run two operations on the collection of elements. First, we replace column 4 by column 2; and then we replace row 2 by row 4. What will be the result?</p>`,
+    options: ['A', 'B', 'C', 'D'],
+    answer: 'B', scored: 'auto'
+  },
+  // ─── #16 ─────────────────────────────────────────────────────────────────
+  {
+    id: 16, type: 'mc', needsImages: ['atta-Q16-1.png', 'atta-Q16-2.png', 'atta-Q16-3.png'],
+    topic: 'Logic circuits',
+    question: `<p>The following scheme represents a circuit of nodes. A, B, C, D and E are nodes of this circuit. Nodes fire and pass their signal on to the next node on their right (e.g., node A gives its output to node D, which gives its output to node E). Nodes’ output can be either 1 or 0.</p>
+    <p>We see the circuit produces the states shown in the table above. We know that <strong>Node D and E ALWAYS follow the same algorithm</strong>. See the possible algorithms:</p>
+    <pre>Algorithm 1: If inputs are (1,1) → outputs 1; else: outputs 0
+Algorithm 2: If inputs are (1,0) or (0,1) → outputs 1; else: outputs 0
+Algorithm 3: If inputs are (1,1) → outputs 0; else: outputs 1</pre>
+    <p>Which algorithm are node D and E both following?</p>`,
+    options: ['A) Algorithm 1', 'B) Algorithm 2', 'C) Algorithm 3', 'D) This problem has no solution'],
+    answer: 'B', scored: 'auto'
+  },
+  // ─── #17 ─────────────────────────────────────────────────────────────────
+  {
+    id: 17, type: 'text2', needsImage: null,
+    topic: 'Logic gates',
+    question: `<p>An “OR” gate outputs 1 if it receives one or more inputs with value 1. Else, it outputs 0.<br>
+    A “XOR” gate outputs 1 if it has two inputs with different values (0, 1) or (1, 0). Else, it outputs 0.<br>
+    A “NOT” gate inverts its input (it outputs 1 if the input is 0, and vice versa).</p>
+    <p>The inputs A, B, C and D can either be 0 or 1. We want this circuit to check that A=B and that C=D. That is, the final output of this circuit will be 1 if A=B <em>and</em> if C=D; otherwise, the output will be 0. We already know that <strong>gate 2 is a XOR</strong> and <strong>gate 4 is a NOT</strong>. What gates should we put in positions 1 and 3 of this circuit?</p>`,
+    labels: ['Gate 1:', 'Gate 3:'],
+    answers: ['XOR', 'OR'], scored: 'auto'
+  },
+  // ─── #19 ─────────────────────────────────────────────────────────────────
+  {
+    id: 19, type: 'textarea', needsImage: null,
+    topic: 'Algorithm design (rope burning)',
+    question: `<p>You have two ropes and a lighter, and each rope takes exactly one hour to burn. They don’t burn randomly, but at a regular speed. How would you use them to time exactly 15 minutes? The ropes cannot be cut, bent, straightened or measured with external instruments. (You don’t need to time 15 minutes from the moment that you start your actions)</p>
+    <p>Please briefly explain the procedure:</p>`,
+    answer: 'MANUAL',
+    answerdisplay: '1. Light rope 1 at both ends AND rope 2 at one end simultaneously. 2. When rope 1 is fully burnt (30 min elapsed), light rope 2 at the other end. 3. Rope 2 burns out in exactly 15 more minutes.',
+    rubric: 'Score 1 if response mentions: (a) lighting rope 1 at both ends and rope 2 at one end, AND (b) lighting rope 2 at the other end when rope 1 finishes. Score 0 if response involves cutting/bending/marking ropes.',
+    scored: 'manual'
+  },
+  // ─── #20 ─────────────────────────────────────────────────────────────────
+  {
+    id: 20, type: 'text6', needsImage: null,
+    topic: 'Variable swapping',
+    question: `<p>After finishing your long paper, you just discovered a mistake you made. All 4’s should be 7’s and all 7’s should be 4’s. To amend this, you can use an editor that will replace any sequence of characters with another sequence.</p>
+    <p>In order to describe the replacement you would make with the editor, please fill in the blanks:</p>
+    <pre>Replace all [blank 1] with [blank 2];
+then replace all [blank 3] with [blank 4];
+then replace all [blank 5] with [blank 6]</pre>`,
+    labels: ['Step 1 — replace:', 'Step 1 — with:', 'Step 2 — replace:', 'Step 2 — with:', 'Step 3 — replace:', 'Step 3 — with:'],
+    answer: 'MANUAL',
+    answerdisplay: 'Replace 4 with TEMP; replace 7 with 4; replace TEMP with 7 (or reversed: 7→TEMP, 4→7, TEMP→4)',
+    rubric: 'Score 1 if: a temporary placeholder is introduced in step 1 (any name), 4→7 and 7→4 are both achieved, and the placeholder is resolved. Score 0 if steps 1–2 overwrite a value before it is saved.',
+    scored: 'manual'
+  },
+  // ─── #21 ─────────────────────────────────────────────────────────────────
+  {
+    id: 21, type: 'mc', needsImages: ['atta-Q21-q1.png', 'atta-Q21-q2.png', 'atta-Q21-q3.png'],
+    imageOptions: ['atta-Q21-a1.png', 'atta-Q21-a2.png', 'atta-Q21-a3.png', 'atta-Q21-a4.png'],
+    topic: 'Graph representation translation',
+    question: `<p>We have two methods to represent a group of people. In both methods, for each person a circle is drawn. In method 1, we align people horizontally if they are connected on WhatsApp, and we align them vertically if they are connected on Instagram. In method 2, we draw a line between two people if they are connected either on WhatsApp or Instagram.</p>
+    <p>The images above show: (1) an example group in Method 1, (2) the same group in Method 2, and (3) a new group of six people shown in Method 1.</p>
+    <p>Which of the four diagrams below would represent this new group of people according to Method 2?</p>`,
+    options: ['A', 'B', 'C', 'D'],
+    answer: 'D', scored: 'auto'
+  },
+  // ─── #23 ─────────────────────────────────────────────────────────────────
+  {
+    id: 23, type: 'text8', needsImage: 'atta-Q23.png',
+    topic: 'Binary routing / switches',
+    question: `<p>Eight trains (named a, b, c, d, e, f, g, h) enter the circuit from left to right. In this circuit there are 7 switches (X1 to X7) with two positions: up or down. Each switch is initially set to direct trains up. After a train passes a switch, the switch changes from up to down, or from down to up. Train a needs to go to station A, train b to station B, train c to station C, and so on.</p>
+    <p>The railroad director needs to ensure that all the trains go to their correct stations, so what is the correct order for the trains to pass through switch X1?</p>`,
+    labels: ['1st:', '2nd:', '3rd:', '4th:', '5th:', '6th:', '7th:', '8th:'],
+    answers: ['A', 'E', 'C', 'G', 'B', 'F', 'D', 'H'], scored: 'auto'
+  },
+  // ─── #24 ─────────────────────────────────────────────────────────────────
+  {
+    id: 24, type: 'text1', needsImage: 'atta-Q24.png',
+    topic: 'Algorithm tracing on a graph',
+    question: `<p>This diagram shows the relationship between 7 students in a book-sharing club. Their names and ages are shown in the image. Students who are friends are connected through a line.</p>
+    <p>The club has some regulations for members: when you receive a book, you read it (if you haven’t already done so) and then pass it to the <strong>youngest friend who has not read it yet</strong>. If, however, all your friends have read the book then you should pass it to the <strong>friend who first gave it to you</strong>.</p>
+    <p>Ben has read a new book and wants to share it with his friends. Who will read the book last?</p>`,
+    placeholder: 'Enter name', answers: ['KIM'], scored: 'auto'
+  },
+  // ─── #25 ─────────────────────────────────────────────────────────────────
+  {
+    id: 25, type: 'mc', needsImages: ['atta-Q25-1.png', 'atta-Q25-2.png'],
+    topic: 'Function composition on arrays',
+    question: `<p>You have this <strong>initial</strong> set of three arrows (first image). By applying some functions, you want to get the <strong>final</strong> set of arrows (second image).</p>
+    <p>The first time you apply a function, it is applied to all three arrows. But the following functions are applied to n−1 arrows: the second function is applied only to the first two arrows; and the third function is applied only to the first arrow.</p>
+    <p>See the functions that one can apply to obtain the final set of arrows:</p>
+    <pre>Function 1: turn the arrows 45 degrees anti-clockwise
+Function 2: turn the arrows 180 degrees
+Function 3: switch colors (turn white arrows into blue arrows, and blue arrows into white arrows)</pre>
+    <p>What is the sequence of functions that applied to the initial set of arrows will get you the final set of arrows?</p>`,
+    options: [
+      'A. Function 3; Function 3; Function 2',
+      'B. Function 2; Function 3; Function 3',
+      'C. Function 3; Function 2; Function 1',
+      'D. Function 3; Function 2; Function 3'
+    ],
+    answer: 'D', scored: 'auto'
+  },
+  // ─── #26 ─────────────────────────────────────────────────────────────────
+  {
+    id: 26, type: 'mc', needsImages: ['atta-Q26-1.png', 'atta-Q26-2.png'],
+    topic: 'String operations / sequence editing',
+    question: `<p>You have the following DNA sequence (first image), and you want to get the sequence shown in the second image.</p>
+    <p>You can implement the following operations:</p>
+    <pre>Swap(X,Y): swap one character for another. E.g., Swap(A,G) turns AAGT into GGAT.
+Insert(X): insert a specified character at the beginning. E.g., Insert(A) turns GT into AGT.
+Delete(X): delete all specified characters. E.g., Delete(A) turns AAGT into GT.</pre>
+    <p>What operations will turn the initial DNA sequence into the one we want?</p>`,
+    options: [
+      'A. Delete(G); then Insert(T); then Swap(C,T)',
+      'B. Swap(C,T); then Insert(T); then Delete(G)',
+      'C. Insert(T); then Swap(C,T); then Delete(G)',
+      'D. Insert(T); then Delete(G); then Swap(C,T)'
+    ],
+    answer: 'B', scored: 'auto'
+  },
+  // ─── #27 ─────────────────────────────────────────────────────────────────
+  {
+    id: 27, type: 'text4', needsImage: 'atta-Q27.png',
+    topic: 'Directional algorithm tracing',
+    question: `<p>This robot is programmed through a series of arrow commands (“left”, “right”, “up”, “down”). Each arrow command causes the robot to either move one step (if the move in that direction is possible) or not to move (if the move in that direction is not possible).</p>
+    <p>Imagine the robot has a series of four commands, which it will repeat over and over again. You can put any arrow that you want (“left”, “right”, “up”, “down”) in each command, and you may repeat the same arrow in the series of commands if you want. What should be those 4 commands in order for the robot to reach the square called “OUT” and get out of the maze?</p>`,
+    labels: ['Command 1:', 'Command 2:', 'Command 3:', 'Command 4:'],
+    answers: ['LEFT', 'LEFT', 'DOWN', 'RIGHT'],
+    answerdisplay: 'One valid answer: left, left, down, right (also valid: right, left, left, down / down, right, left, left)',
+    scored: 'manual'
+  },
+];
+
+// ─── State ────────────────────────────────────────────────────────────────
+let currentIdx = 0;
+let responses = [];  // {itemId, response, isCorrect, autoScored}
+
+function saveCheckpoint() {
+  const pid = localStorage.getItem('participant_id') || '';
+  localStorage.setItem('battery_checkpoint', JSON.stringify({
+    participantId: pid, task: '03-atta.html',
+    itemIdx: currentIdx, responses: responses.map(r => ({
+      itemId: r.itemId, topic: r.topic, response: r.response,
+      isCorrect: r.isCorrect, autoScored: r.autoScored
+    })), timestamp: new Date().toISOString()
+  }));
+}
+
+function startATTA() {
+  // Check for a saved checkpoint for this task
+  let cp = null;
+  try { cp = JSON.parse(localStorage.getItem('battery_checkpoint')); } catch {}
+  const pid = localStorage.getItem('participant_id') || '';
+  if (cp && cp.participantId === pid && cp.task === '03-atta.html' && cp.responses && cp.responses.length > 0) {
+    currentIdx = cp.itemIdx;
+    responses = cp.responses;  // restore partial responses (no item ref needed until results)
+  }
+  showScreen('screen-question');
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const item = ITEMS[currentIdx];
+  document.getElementById('q-meta').textContent = `Question ${currentIdx + 1} of ${ITEMS.length}  (Topic: ${item.topic})`;
+  document.getElementById('q-content').innerHTML = buildItemHTML(item);
+  // Restore previous response if navigating back (we don't allow back nav, but just in case)
+}
+
+function imgTag(uid, file) {
+  return `<div class="diagram">
+    <img src="img/${file}" alt="${file}"
+      onerror="this.style.display='none';document.getElementById('miss-${uid}').style.display='block'">
+    <div id="miss-${uid}" class="img-missing" style="display:none">
+      ⚠️ Image not found: <code>img/${file}</code>
+    </div>
+  </div>`;
+}
+
+function buildItemHTML(item) {
+  let html = '';
+  // Single image
+  if (item.needsImage) {
+    html += imgTag(item.id, item.needsImage);
+  }
+  // Multiple images (shown in sequence above the question)
+  if (item.needsImages) {
+    item.needsImages.forEach((f, i) => { html += imgTag(`${item.id}-${i}`, f); });
+  }
+  // Question text
+  html += `<div class="q-body">${item.question}</div>`;
+
+  // Response area
+  switch (item.type) {
+    case 'mc':
+      if (item.imageOptions) {
+        // Image-based answer options (Q13, Q21)
+        html += '<div class="img-options-row">';
+        item.imageOptions.forEach((imgFile, i) => {
+          const letter = String.fromCharCode(65 + i);
+          html += `<button class="img-mc-option" id="mc-${item.id}-${letter}" onclick="selectMC(${item.id}, '${letter}', this)">
+            <span class="img-opt-label">${letter}</span>
+            <img src="img/${imgFile}" alt="Option ${letter}">
+          </button>`;
+        });
+        html += '</div>';
+      } else {
+        html += item.options.map((opt, i) => {
+          const letter = String.fromCharCode(65 + i);
+          return `<button class="mc-option" id="mc-${item.id}-${letter}" onclick="selectMC(${item.id}, '${letter}', this)">${opt}</button>`;
+        }).join('');
+      }
+      break;
+
+    case 'numeric':
+      html += `<input type="number" class="text-input" id="resp-${item.id}" placeholder="${item.placeholder}" style="max-width:160px">`;
+      break;
+
+    case 'text1':
+      html += `<input type="text" class="text-input" id="resp-${item.id}" placeholder="${item.placeholder || 'Your answer'}">`;
+      break;
+
+    case 'text2':
+      html += item.labels.map((lbl, i) =>
+        `<div class="input-row"><label>${lbl}</label><input type="text" class="text-input" id="resp-${item.id}-${i}" placeholder="gate name"></div>`
+      ).join('');
+      break;
+
+    case 'text4':
+      html += `<div class="blanks-inline">${
+        item.labels.map((lbl, i) =>
+          `<div class="blank-item"><label>${lbl}</label><input type="text" id="resp-${item.id}-${i}" placeholder="direction"></div>`
+        ).join('')
+      }</div>`;
+      break;
+
+    case 'text6':
+      html += `<div class="blanks-grid">${
+        item.labels.map((lbl, i) =>
+          `<div class="input-row"><label style="min-width:120px">${lbl}</label><input type="text" class="text-input" id="resp-${item.id}-${i}" placeholder="..."></div>`
+        ).join('')
+      }</div>`;
+      break;
+
+    case 'text8':
+      html += `<div class="blanks-inline">${
+        item.labels.map((lbl, i) =>
+          `<div class="blank-item"><label>${lbl}</label><input type="text" id="resp-${item.id}-${i}" placeholder="train" style="width:70px;text-transform:uppercase"></div>`
+        ).join('')
+      }</div>`;
+      break;
+
+    case 'textarea':
+      html += `<textarea class="text-input" id="resp-${item.id}" placeholder="Briefly explain your procedure..."></textarea>`;
+      break;
+
+    case 'cheese':
+      html += `<div class="input-row"><label style="min-width:160px">${item.labelA}</label><input type="text" class="text-input" id="resp-${item.id}-A" placeholder="e.g. 1, 2"></div>`;
+      html += `<div class="input-row"><label style="min-width:160px">${item.labelB}</label><input type="text" class="text-input" id="resp-${item.id}-B" placeholder="e.g. 2, 3"></div>`;
+      break;
+  }
+
+  // DEV mode answer hint
+  if (localStorage.getItem('participant_id') === 'DEV') {
+    let hint = '';
+    if (item.answerdisplay) {
+      hint = item.answerdisplay;
+    } else if (item.answer && item.options) {
+      // MC: find the full option text matching the answer letter
+      const matchOpt = item.options.find(o => o[0] === item.answer || o.startsWith(item.answer + '.') || o.startsWith(item.answer + ')'));
+      hint = matchOpt ? `${item.answer}. ${matchOpt.replace(/^[A-D][.)]\s*/,'')}` : `Answer: ${item.answer}`;
+    } else if (item.answer) {
+      hint = `Answer: ${item.answer}`;
+    } else if (item.answers) {
+      hint = `Answers: ${item.answers.join(', ')}`;
+    }
+    if (hint) html += `<details style="margin-top:10px;"><summary style="cursor:pointer;padding:4px 10px;background:#fff3cd;border:1px solid #f0c040;border-radius:5px;font-size:0.85em;color:#5a3000;display:inline-block;">&#x2139; DEV: Reveal answer</summary><div style="padding:6px 12px;background:#fff3cd;border:1px solid #f0c040;border-top:none;border-radius:0 0 5px 5px;font-size:0.85em;color:#5a3000;">${hint}</div></details>`;
+  }
+
+  return html;
+}
+
+// MC selection
+let mcSelections = {};
+function selectMC(itemId, letter, el) {
+  document.querySelectorAll(`[id^="mc-${itemId}-"]`).forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  mcSelections[itemId] = letter;
+}
+
+function nextQuestion() {
+  const item = ITEMS[currentIdx];
+  const resp = collectResponse(item);
+  const {isCorrect, autoScored} = scoreResponse(item, resp);
+  responses.push({itemId: item.id, topic: item.topic, type: item.type, response: resp, isCorrect, autoScored, item});
+  saveCheckpoint();
+  currentIdx++;
+  if (currentIdx < ITEMS.length) {
+    renderQuestion();
+  } else {
+    showResults();
+  }
+}
+
+function collectResponse(item) {
+  switch (item.type) {
+    case 'mc': return mcSelections[item.id] || '';
+    case 'numeric': return (document.getElementById(`resp-${item.id}`)?.value || '').trim();
+    case 'text1': return (document.getElementById(`resp-${item.id}`)?.value || '').trim().toUpperCase();
+    case 'textarea': return (document.getElementById(`resp-${item.id}`)?.value || '').trim();
+    case 'cheese': return {
+      a: (document.getElementById(`resp-${item.id}-A`)?.value || '').trim(),
+      b: (document.getElementById(`resp-${item.id}-B`)?.value || '').trim()
+    };
+    case 'text2': return item.labels.map((_, i) => (document.getElementById(`resp-${item.id}-${i}`)?.value || '').trim().toUpperCase());
+    case 'text4': return item.labels.map((_, i) => (document.getElementById(`resp-${item.id}-${i}`)?.value || '').trim().toUpperCase());
+    case 'text6': return item.labels.map((_, i) => (document.getElementById(`resp-${item.id}-${i}`)?.value || '').trim());
+    case 'text8': return item.labels.map((_, i) => (document.getElementById(`resp-${item.id}-${i}`)?.value || '').trim().toUpperCase());
+    default: return '';
+  }
+}
+
+function scoreResponse(item, resp) {
+  if (item.scored === 'manual') return {isCorrect: null, autoScored: false};
+  switch (item.type) {
+    case 'mc': return {isCorrect: resp === item.answer, autoScored: true};
+    case 'numeric': return {isCorrect: resp === String(item.answer), autoScored: true};
+    case 'text1': return {isCorrect: item.answers.includes(resp), autoScored: true};
+    case 'text2': return {isCorrect: Array.isArray(resp) && resp.every((r, i) => r === item.answers[i].toUpperCase()), autoScored: true};
+    case 'text4': {
+      // Item #12: exact match; Item #27: manual (multiple valid orderings)
+      if (item.id === 27) return {isCorrect: null, autoScored: false};
+      return {isCorrect: Array.isArray(resp) && resp.every((r, i) => r === item.answers[i].toUpperCase()), autoScored: true};
+    }
+    case 'text8': return {isCorrect: Array.isArray(resp) && resp.every((r, i) => r === item.answers[i].toUpperCase()), autoScored: true};
+    default: return {isCorrect: null, autoScored: false};
+  }
+}
+
+function showResults() {
+  const autoItems = responses.filter(r => r.autoScored);
+  const nCorrect = autoItems.filter(r => r.isCorrect).length;
+  const nManual = responses.filter(r => !r.autoScored).length;
+  const total = responses.length;
+
+  document.getElementById('score-auto').textContent = `${nCorrect} / ${autoItems.length} auto-scored correct`;
+  document.getElementById('score-sub').textContent = `${nManual} item(s) require manual review — see table below`;
+
+  const tbody = document.getElementById('results-tbody');
+  tbody.innerHTML = '';
+  responses.forEach((r, idx) => {
+    const tr = document.createElement('tr');
+    const resultClass = r.autoScored ? (r.isCorrect ? 'pass' : 'fail') : 'manual';
+    const resultText = r.autoScored ? (r.isCorrect ? '✓' : '✗') : 'Review';
+    const respDisplay = Array.isArray(r.response) ? r.response.join(', ') :
+                        typeof r.response === 'object' ? JSON.stringify(r.response) : String(r.response);
+    const correctDisplay = r.item.answerdisplay || (Array.isArray(r.item.answers) ? r.item.answers.join(', ') : (r.item.answer || ''));
+    tr.innerHTML = `<td>${r.itemId}</td><td>${r.topic}</td><td>${r.type}</td>
+      <td class="${resultClass}">${resultText}</td>
+      <td>${respDisplay || '(blank)'}</td>
+      <td>${correctDisplay}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  // Manual review rubrics
+  const manuals = responses.filter(r => !r.autoScored && r.item.rubric);
+  if (manuals.length) {
+    let rubricHTML = `<h2 style="margin-top:24px">Manual Scoring Rubrics</h2>`;
+    manuals.forEach(r => {
+      rubricHTML += `<p><strong>Q${r.itemId} (${r.topic}):</strong> ${r.item.rubric}</p>`;
+    });
+    tbody.closest('table').insertAdjacentHTML('afterend', rubricHTML);
+  }
+
+  // Save to localStorage
+  const summary = {
+    task: 'ATTA', n_items: total, n_correct_auto: nCorrect,
+    n_auto: autoItems.length, n_manual_review: nManual,
+    timestamp: new Date().toISOString()
+  };
+  localStorage.setItem('atta_summary', JSON.stringify(summary));
+  localStorage.setItem('atta_trials', JSON.stringify(responses.map(r => ({
+    itemId: r.itemId, topic: r.topic, response: r.response,
+    isCorrect: r.isCorrect, autoScored: r.autoScored
+  }))));
+
+  showScreen('screen-results');
+}
+
+function proceedNext() {
+  const pid = localStorage.getItem('participant_id') || '';
+  localStorage.setItem('battery_checkpoint', JSON.stringify({
+    participantId: pid, task: '04-ellsberg.html', itemIdx: 0, responses: [], timestamp: new Date().toISOString()
+  }));
+  window.location.href = '04-ellsberg.html';
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+</script>
+</body>
+</html>

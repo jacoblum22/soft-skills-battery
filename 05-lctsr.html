@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>LCTSR – Scientific Reasoning</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; display: flex; justify-content: center; }
+    .screen { display: none; max-width: 780px; width: 100%; }
+    .screen.active { display: block; }
+
+    .card { background: white; padding: 36px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-top: 20px; }
+    h1 { font-size: 1.5em; margin-bottom: 16px; }
+    p { line-height: 1.65; margin-bottom: 12px; color: #333; }
+    ul { margin: 0 0 12px 22px; line-height: 1.7; color: #333; }
+
+    .q-meta { font-size: 0.88em; color: #888; margin-bottom: 18px; }
+    .q-body { font-size: 0.97em; line-height: 1.7; color: #222; margin-bottom: 14px; }
+
+    .diagram { text-align: center; margin: 14px 0; }
+    .diagram img { max-width: 100%; border: 1px solid #ddd; border-radius: 4px; }
+    .img-missing { background: #fff3cd; border: 1px solid #f0c040; color: #856404; padding: 10px 14px; border-radius: 4px; font-size: 0.9em; margin: 10px 0; }
+
+    .tier-label { font-weight: bold; font-size: 0.85em; text-transform: uppercase; color: #888; margin: 18px 0 8px; letter-spacing: 0.5px; }
+    .mc-option { display: block; padding: 9px 14px; margin: 5px 0; background: #f9f9f9; border: 2px solid #ddd; border-radius: 6px; cursor: pointer; font-size: 0.95em; transition: border-color 0.15s, background 0.15s; text-align: left; width: 100%; }
+    .mc-option:hover { border-color: #4a6cf7; background: #f0f3ff; }
+    .mc-option.selected { border-color: #4a6cf7; background: #e8eeff; }
+
+    .btn-wide { width: 100%; padding: 13px; font-size: 1.05em; margin-top: 24px; background: #4a6cf7; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    .btn-wide:hover { background: #3a5ce0; }
+    .btn { padding: 11px 28px; background: #4a6cf7; color: white; border: none; border-radius: 6px; font-size: 1em; cursor: pointer; margin-top: 16px; }
+    .btn:hover { background: #3a5ce0; }
+
+    .score-box { text-align: center; background: #f0f4ff; padding: 20px; border-radius: 8px; margin: 16px 0; }
+    .score-box .big { font-size: 2.3em; font-weight: bold; color: #4a6cf7; }
+    .score-box .sub { font-size: 0.95em; color: #555; margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88em; margin-top: 12px; }
+    th { background: #f0f4ff; padding: 8px 10px; text-align: left; border-bottom: 2px solid #dde; }
+    td { padding: 7px 10px; border-bottom: 1px solid #eee; }
+    .pass { color: #2a7a2a; font-weight: bold; }
+    .fail { color: #b00; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<!-- Instructions -->
+<div id="screen-instructions" class="screen active">
+  <div class="card">
+    <h1>Scientific Reasoning</h1>
+    <p>This section tests your ability to apply <strong>scientific and mathematical reasoning</strong> to analyse situations and solve problems. There are <strong>12 questions</strong>, each with two parts:</p>
+    <ul>
+      <li><strong>Part 1:</strong> Choose the correct answer.</li>
+      <li><strong>Part 2:</strong> Choose the best reason for your answer.</li>
+    </ul>
+    <p>Some questions include a diagram — examine it carefully before answering. There is no time limit, but aim to work steadily (~15 minutes total).</p>
+    <p>If you are unsure about a question, make your best guess and move on.</p>
+    <button class="btn" onclick="startLCTSR()">Begin</button>
+  </div>
+</div>
+
+<!-- Question -->
+<div id="screen-question" class="screen">
+  <div class="card">
+    <div class="q-meta" id="q-meta">Question 1 of 12</div>
+    <div id="q-content"></div>
+    <button class="btn-wide" id="next-btn" onclick="nextQuestion()">Next →</button>
+  </div>
+</div>
+
+<!-- Results -->
+<div id="screen-results" class="screen">
+  <div class="card">
+    <h1>Scientific Reasoning — Complete</h1>
+    <div class="score-box">
+      <div class="big" id="score-display">—</div>
+      <div class="sub">Score = items where both tier-1 and tier-2 answers are correct</div>
+    </div>
+    <table>
+      <thead><tr><th>Q</th><th>Reasoning type</th><th>Tier 1</th><th>Tier 2</th><th>Result</th></tr></thead>
+      <tbody id="results-tbody"></tbody>
+    </table>
+    <button class="btn-wide" onclick="proceedNext()">Continue to Next Task →</button>
+  </div>
+</div>
+
+<script>
+// ─── Item definitions ─────────────────────────────────────────────────────
+// Subset: 2 items per reasoning type (12 total)
+// Each item has: stem, optional image, tier1 options (a–e), tier1Answer, tier2 "because" options, tier2Answer
+// type: reasoning type grouping
+//
+// Items selected from Lawson (2000) 24-item test (multiple-choice version):
+// Conservation:         Q1-2 (clay balls), Q3-4 (marbles in cylinders)
+// Proportional:         Q5-6 (wide/narrow cylinder), Q7-8 (narrow→wide cylinder)
+// Control of variables: Q9-10 (pendulum strings)
+// Probabilistic:        Q15-16 (red squares in bag), Q17-18 (mixed shapes in bag)
+// Correlational:        Q19-20 (fat/thin mice with black/white tails)
+// Hypothetico-deductive:Q21-22 (candle in glass, CO₂ explanation),
+//                       Q23-24 (red blood cells + salt water)
+
+const ITEMS = [
+  // ─── CONSERVATION ────────────────────────────────────────────────────────
+  {
+    id: 1, type: 'Conservation',
+    needsImage: null,
+    stem: `Suppose you are given two clay balls of equal size and shape. The two clay balls also weigh the same. One ball is flattened into a pancake-shaped piece. Which of these statements is correct?`,
+    t1options: [
+      'a. The pancake-shaped piece weighs more than the ball',
+      'b. The two pieces still weigh the same',
+      'c. The ball weighs more than the pancake-shaped piece',
+    ],
+    t1answer: 'b',
+    t2stem: 'because',
+    t2options: [
+      'a. The flattened piece covers a larger area',
+      'b. The ball pushes down more on one spot',
+      'c. When something is flattened it loses weight',
+      'd. Clay has not been added or taken away',
+      'e. When something is flattened it gains weight',
+    ],
+    t2answer: 'd',
+  },
+  {
+    id: 2, type: 'Conservation',
+    needsImage: 'lctsr-Q2.png',
+    stem: `To the right are drawings of two cylinders filled to the same level with water. The cylinders are identical in size and shape. Also shown are two marbles, one glass and one steel. The marbles are the same size but the steel one is much heavier than the glass one. When the glass marble is put into Cylinder 1 it sinks to the bottom and the water level rises to the 6th mark. If we put the steel marble into Cylinder 2, the water will rise:`,
+    t1options: [
+      'a. To the same level as in Cylinder 1',
+      'b. To a higher level than in Cylinder 1',
+      'c. To a lower level than in Cylinder 1',
+    ],
+    t1answer: 'a',
+    t2stem: 'because',
+    t2options: [
+      'a. The steel marble will sink faster',
+      'b. The marbles are made of different materials',
+      'c. The steel marble is heavier than the glass marble',
+      'd. The glass marble creates less pressure',
+      'e. The marbles are the same size',
+    ],
+    t2answer: 'e',
+  },
+  // ─── PROPORTIONAL REASONING ───────────────────────────────────────────────
+  {
+    id: 3, type: 'Proportional reasoning',
+    needsImage: 'lctsr-Q3.png',
+    stem: `To the right are drawings of a wide and a narrow cylinder. The cylinders have equally spaced marks on them. Water is poured into the wide cylinder up to the 4th mark (see A). This water rises to the 6th mark when poured into the narrow cylinder (see B). Both cylinders are emptied and water is poured into the wide cylinder up to the 6th mark. How high would this water rise if it were poured into the empty narrow cylinder?`,
+    t1options: ['a. 8', 'b. 9', 'c. 10', 'd. 12', 'e. None of these'],
+    t1answer: 'b',
+    t2stem: 'because',
+    t2options: [
+      'a. The answer cannot be determined with the information given',
+      'b. It went up 2 more before, so it will go up 2 more again',
+      'c. It goes up 3 in the narrow for every 2 in the wide',
+      'd. The second cylinder is narrower',
+      'e. For every 2 in the wide it goes up 1 more in the narrow',
+    ],
+    t2answer: 'c',
+  },
+  {
+    id: 4, type: 'Proportional reasoning',
+    needsImage: 'lctsr-Q3.png',
+    stem: `Water is now poured into the <strong>narrow</strong> cylinder (described in the previous question) up to the <strong>11th mark</strong>. How high would this water rise if it were poured into the empty wide cylinder?`,
+    t1options: ['a. 9', 'b. 8', 'c. 7½', 'd. 7⅓', 'e. None of these'],
+    t1answer: 'd',
+    t2stem: 'because',
+    t2options: [
+      'a. The ratios must stay the same',
+      'b. One must actually pour the water and observe',
+      'c. The answer cannot be determined with the information given',
+      'd. It was 2 less before, so it will be 2 less again',
+      'e. You subtract 2 from the wide for every 3 from the narrow',
+    ],
+    t2answer: 'a',
+  },
+  // ─── CONTROL OF VARIABLES ────────────────────────────────────────────────
+  {
+    id: 5, type: 'Control of variables',
+    needsImage: 'lctsr-Q5.png',
+    stem: `At the right are drawings of three strings hanging from a bar. The three strings have metal weights attached to their ends. String 1 and String 3 are the same length. String 2 is shorter. A 10-unit weight is attached to String 1. A 10-unit weight is also attached to String 2. A 5-unit weight is attached to String 3. The strings (and attached weights) can be swung back and forth and the time it takes to make a swing can be timed. Suppose you want to find out whether the <strong>length of the string</strong> has an effect on the time it takes to swing back and forth. Which strings would you use to find out?`,
+    t1options: ['a. Only one string', 'b. All three', 'c. Strings 2 and 3', 'd. Strings 1 and 3', 'e. Strings 1 and 2'],
+    t1answer: 'e',
+    t2stem: 'because',
+    t2options: [
+      'a. You must use the longest strings',
+      'b. You must compare strings with both light and heavy weights',
+      'c. Only the lengths differ',
+      'd. To make all possible comparisons',
+      'e. The weights differ',
+    ],
+    t2answer: 'c',
+  },
+  // ─── PROBABILISTIC REASONING ─────────────────────────────────────────────
+  {
+    id: 6, type: 'Probabilistic reasoning',
+    needsImage: null,
+    stem: `Six square pieces of wood are put into a cloth bag and mixed about. The six pieces are identical in size and shape; however, three pieces are red and three are yellow. Suppose someone reaches into the bag (without looking) and pulls out one piece. What are the chances that the piece is red?`,
+    t1options: [
+      'a. 1 chance in 6',
+      'b. 1 chance in 3',
+      'c. 1 chance in 2',
+      'd. 1 chance in 1',
+      'e. Cannot be determined',
+    ],
+    t1answer: 'c',
+    t2stem: 'because',
+    t2options: [
+      'a. 3 out of 6 pieces are red',
+      'b. There is no way to tell which piece will be picked',
+      'c. Only 1 piece of the 6 is picked',
+      'd. All 6 pieces are identical in size and shape',
+      'e. Only 1 red piece can be picked out of the 3 red pieces',
+    ],
+    t2answer: 'a',
+  },
+  {
+    id: 7, type: 'Probabilistic reasoning',
+    needsImage: null,
+    stem: `Three red square pieces, four yellow square pieces, and five blue square pieces are put into a cloth bag. Four red round pieces, two yellow round pieces, and three blue round pieces are also put into the bag. All the pieces are then mixed about. Suppose someone reaches into the bag (without looking and without feeling for a particular shape) and pulls out one piece. What are the chances that the piece is a <strong>red round or blue round</strong> piece?`,
+    t1options: [
+      'a. Cannot be determined',
+      'b. 1 chance in 3',
+      'c. 1 chance in 21',
+      'd. 15 chances in 21',
+      'e. 1 chance in 2',
+    ],
+    t1answer: 'b',   // 7 red+blue rounds out of 21 = 1/3
+    t2stem: 'because',
+    t2options: [
+      'a. 1 of the 2 shapes is round',
+      'b. 15 of the 21 pieces are red or blue',
+      'c. There is no way to tell which piece will be picked',
+      'd. Only 1 of the 21 pieces is picked',
+      'e. 1 of every 3 pieces is a red or blue round piece',
+    ],
+    t2answer: 'e',
+  },
+  // ─── CORRELATIONAL REASONING ─────────────────────────────────────────────
+  {
+    id: 8, type: 'Correlational reasoning',
+    needsImage: 'lctsr-Q8.png',
+    stem: `Farmer Brown was observing the mice that live in his field. He discovered that all of the mice were either fat or thin. Also, all of them had either black tails or white tails. This made him wonder if there might be a link between the size of the mice and the colour of their tails. So he captured all of the mice in one part of his field and observed them. Below are the mice that he captured. Do you think there is a link between the size of the mice and the colour of their tails?`,
+    t1options: [
+      'a. Appears to be a link',
+      'b. Appears not to be a link',
+      'c. Cannot make a reasonable guess',
+    ],
+    t1answer: 'a',
+    t2stem: 'because',
+    t2options: [
+      'a. There are some of each kind of mouse',
+      'b. There may be a genetic link between mouse size and tail colour',
+      'c. There were not enough mice captured',
+      'd. Most fat mice have black tails while most thin mice have white tails',
+      'e. As mice grew fatter their tails became darker',
+    ],
+    t2answer: 'd',
+  },
+  // ─── HYPOTHETICO-DEDUCTIVE ───────────────────────────────────────────────
+  {
+    id: 9, type: 'Hypothetico-deductive',
+    needsImage: null,
+    stem: `A burning candle stands in a pan of water. When a glass is turned upside-down over the candle and placed in the water, the candle goes out and water rushes up into the glass. A possible explanation: the flame converts oxygen into carbon dioxide; because CO₂ dissolves rapidly into water but oxygen does not, the newly formed CO₂ dissolves, lowering the air pressure inside the glass. Suppose you have the materials above plus matches and dry ice (frozen CO₂). How could you <strong>test this explanation</strong>?`,
+    t1options: [
+      'a. Saturate the water with CO₂ and redo the experiment noting the amount of water rise',
+      'b. Redo the experiment in exactly the same way to show water rise due to oxygen loss',
+      'c. Conduct a controlled experiment varying only the number of candles',
+      'd. Put a balloon over an open-ended cylinder and place it over the burning candle',
+      'e. Redo the experiment, hold all independent variables constant, and measure the water rise',
+    ],
+    t1answer: 'a',
+    t2stem: 'What result of your test would show that the explanation is probably wrong?',
+    t2options: [
+      'a. The water rises to the same level as it did before',
+      'b. The water rises less than it did before',
+      'c. The balloon expands outward',
+      'd. The balloon is sucked inward',
+    ],
+    t2answer: 'a',
+  },
+  {
+    id: 10, type: 'Hypothetico-deductive',
+    needsImage: null,
+    stem: `A student added salt water to a drop of blood on a microscope slide and noticed the red blood cells appeared smaller. Two explanations: <br><strong>I.</strong> Salt ions (Na⁺, Cl⁻) push on cell membranes, making cells appear smaller.<br><strong>II.</strong> Water molecules are attracted to salt ions and move out of cells, leaving them smaller.<br><br>The student carefully weighed a water-filled plastic bag, placed it in salt solution for 10 minutes, then reweighed it. What result would best show that <strong>Explanation I</strong> is probably wrong?`,
+    t1options: ['a. The bag loses weight', 'b. The bag weighs the same', 'c. The bag appears smaller'],
+    t1answer: 'a',
+    t2stem: 'What result would best show that Explanation II is probably wrong?',
+    t2options: ['a. The bag loses weight', 'b. The bag weighs the same', 'c. The bag appears smaller'],
+    t2answer: 'b',
+  },
+  // ─── TWO ADDITIONAL ITEMS FOR FLY EXPERIMENT (replaces missing Q11-14 slot)
+  // Using fruit fly experiment — probabilistic/correlational cross
+  {
+    id: 11, type: 'Control of variables',
+    needsImage: 'lctsr-Q11.png',
+    stem: `Twenty fruit flies are placed in each of four sealed glass tubes. Tubes I and II are partially covered with black paper; Tubes III and IV are not covered. The tubes are placed as shown and exposed to red light for five minutes. The number of flies in the uncovered part of each tube is counted.<br><br>This experiment shows that flies respond to:`,
+    t1options: [
+      'a. Red light but not gravity',
+      'b. Gravity but not red light',
+      'c. Both red light and gravity',
+      'd. Neither red light nor gravity',
+    ],
+    t1answer: 'c',
+    t2stem: 'because',
+    t2options: [
+      'a. Most flies are in the upper end of Tube III but spread about evenly in Tube II',
+      'b. Most flies did not go to the bottom of Tubes I and III',
+      'c. The flies need light to see and must fly against gravity',
+      'd. The majority of flies are in the upper ends and in the lighted ends of the tubes',
+      'e. Some flies are in both ends of each tube',
+    ],
+    t2answer: 'd',
+  },
+  {
+    id: 12, type: 'Control of variables',
+    needsImage: 'lctsr-Q12.png',
+    stem: `In a second experiment, a different type of fly and blue light were used. The results are shown in the diagram. These data show that these flies respond to:`,
+    t1options: [
+      'a. Blue light but not gravity',
+      'b. Gravity but not blue light',
+      'c. Both blue light and gravity',
+      'd. Neither blue light nor gravity',
+    ],
+    t1answer: 'd',
+    t2stem: 'because',
+    t2options: [
+      'a. Some flies are in both ends of each tube',
+      'b. The flies need light to see and must fly against gravity',
+      'c. The flies are spread about evenly in Tube IV and in the upper end of Tube III',
+      'd. Most flies are in the lighted end of Tube II but do not go down in Tubes I and III',
+      'e. Most flies are in the upper end of Tube I and the lighted end of Tube II',
+    ],
+    t2answer: 'c',
+  },
+];
+
+// ─── State ────────────────────────────────────────────────────────────────
+let currentIdx = 0;
+let responses = [];
+let t1Selected = null;
+let t2Selected = null;
+
+function saveCheckpoint() {
+  const pid = localStorage.getItem('participant_id') || '';
+  localStorage.setItem('battery_checkpoint', JSON.stringify({
+    participantId: pid, task: '05-lctsr.html',
+    itemIdx: currentIdx, responses, timestamp: new Date().toISOString()
+  }));
+}
+
+function startLCTSR() {
+  let cp = null;
+  try { cp = JSON.parse(localStorage.getItem('battery_checkpoint')); } catch {}
+  const pid = localStorage.getItem('participant_id') || '';
+  if (cp && cp.participantId === pid && cp.task === '05-lctsr.html' && cp.responses && cp.responses.length > 0) {
+    currentIdx = cp.itemIdx;
+    responses = cp.responses;
+  }
+  showScreen('screen-question');
+  renderQuestion();
+}
+
+function renderQuestion() {
+  t1Selected = null;
+  t2Selected = null;
+  const item = ITEMS[currentIdx];
+  document.getElementById('q-meta').textContent = `Question ${currentIdx + 1} of ${ITEMS.length}  (${item.type})`;
+  document.getElementById('q-content').innerHTML = buildItemHTML(item);
+}
+
+function buildItemHTML(item) {
+  let html = '';
+  if (item.needsImage) {
+    html += `<div class="diagram">
+      <img src="img/${item.needsImage}" alt="Diagram"
+        onerror="this.style.display='none';document.getElementById('imgmiss-${item.id}').style.display='block'">
+      <div id="imgmiss-${item.id}" class="img-missing" style="display:none">
+        ⚠️ Diagram missing — save screenshot as <code>img/${item.needsImage}</code>
+      </div>
+    </div>`;
+  }
+  html += `<div class="q-body">${item.stem}</div>`;
+
+  html += `<div class="tier-label">Part 1: Your answer</div>`;
+  item.t1options.forEach((opt, i) => {
+    const val = opt[0]; // letter
+    html += `<button class="mc-option" id="t1-${item.id}-${val}" onclick="selectT1('${item.id}','${val}',this)">${opt}</button>`;
+  });
+
+  html += `<div class="tier-label">Part 2: ${item.t2stem}</div>`;
+  item.t2options.forEach((opt, i) => {
+    const val = opt[0];
+    html += `<button class="mc-option" id="t2-${item.id}-${val}" onclick="selectT2('${item.id}','${val}',this)">${opt}</button>`;
+  });
+
+  // DEV mode answer hint
+  if (localStorage.getItem('participant_id') === 'DEV') {
+    const findOpt = (opts, letter) => {
+      const o = opts.find(x => x[0] === letter);
+      return o ? `${letter}. ${o.replace(/^[a-e][.)]\s*/,'')}` : letter;
+    };
+    const t1text = findOpt(item.t1options, item.t1answer);
+    const t2text = findOpt(item.t2options, item.t2answer);
+    html += `<details style="margin-top:10px;"><summary style="cursor:pointer;padding:4px 10px;background:#fff3cd;border:1px solid #f0c040;border-radius:5px;font-size:0.85em;color:#5a3000;display:inline-block;">&#x2139; DEV: Reveal answer</summary><div style="padding:6px 12px;background:#fff3cd;border:1px solid #f0c040;border-top:none;border-radius:0 0 5px 5px;font-size:0.85em;color:#5a3000;">Part 1 = <strong>${t1text}</strong> &nbsp;|&nbsp; Part 2 = <strong>${t2text}</strong></div></details>`;
+  }
+
+  return html;
+}
+
+function selectT1(itemId, val, el) {
+  document.querySelectorAll(`[id^="t1-${itemId}-"]`).forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  t1Selected = val;
+}
+function selectT2(itemId, val, el) {
+  document.querySelectorAll(`[id^="t2-${itemId}-"]`).forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  t2Selected = val;
+}
+
+function nextQuestion() {
+  const item = ITEMS[currentIdx];
+  const corr = t1Selected === item.t1answer && t2Selected === item.t2answer;
+  responses.push({
+    id: item.id, type: item.type,
+    t1: t1Selected || '(blank)', t2: t2Selected || '(blank)',
+    t1correct: t1Selected === item.t1answer,
+    t2correct: t2Selected === item.t2answer,
+    isCorrect: corr,
+    t1answer: item.t1answer, t2answer: item.t2answer,
+  });
+  saveCheckpoint();
+  currentIdx++;
+  if (currentIdx < ITEMS.length) renderQuestion();
+  else showResults();
+}
+
+function showResults() {
+  const nCorrect = responses.filter(r => r.isCorrect).length;
+  document.getElementById('score-display').textContent = `${nCorrect} / ${ITEMS.length}`;
+
+  const tbody = document.getElementById('results-tbody');
+  tbody.innerHTML = '';
+  responses.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r.id}</td><td>${r.type}</td>
+      <td class="${r.t1correct ? 'pass':'fail'}">${r.t1} (correct: ${r.t1answer})</td>
+      <td class="${r.t2correct ? 'pass':'fail'}">${r.t2} (correct: ${r.t2answer})</td>
+      <td class="${r.isCorrect ? 'pass':'fail'}">${r.isCorrect ? '✓' : '✗'}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  const byType = {};
+  responses.forEach(r => {
+    if (!byType[r.type]) byType[r.type] = {n:0, correct:0};
+    byType[r.type].n++;
+    if (r.isCorrect) byType[r.type].correct++;
+  });
+
+  localStorage.setItem('lctsr_summary', JSON.stringify({
+    task: 'LCTSR', n_items: ITEMS.length, n_correct: nCorrect, by_type: byType,
+    timestamp: new Date().toISOString()
+  }));
+  localStorage.setItem('lctsr_trials', JSON.stringify(responses));
+  showScreen('screen-results');
+}
+
+function proceedNext() {
+  const pid = localStorage.getItem('participant_id') || '';
+  localStorage.setItem('battery_checkpoint', JSON.stringify({
+    participantId: pid, task: '06-tosls.html', itemIdx: 0, responses: [], timestamp: new Date().toISOString()
+  }));
+  window.location.href = '06-tosls.html';
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+</script>
+</body>
+</html>

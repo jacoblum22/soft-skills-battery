@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Battery Results</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 30px 20px; display: flex; justify-content: center; }
+    .page { max-width: 860px; width: 100%; }
+    .card { background: white; padding: 36px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 24px; }
+    h1 { font-size: 1.6em; margin-bottom: 8px; }
+    h2 { font-size: 1.15em; margin-bottom: 12px; color: #333; }
+    p { line-height: 1.65; color: #333; margin-bottom: 10px; }
+    .pid-box { background: #f0f4ff; padding: 12px 18px; border-radius: 6px; font-size: 1.1em; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9em; margin-bottom: 16px; }
+    th { background: #f0f4ff; padding: 9px 12px; text-align: left; border-bottom: 2px solid #dde; }
+    td { padding: 8px 12px; border-bottom: 1px solid #eee; }
+    .good { color: #2a7a2a; font-weight: bold; }
+    .missing { color: #aaa; font-style: italic; }
+    .btn { padding: 11px 28px; background: #4a6cf7; color: white; border: none; border-radius: 6px; font-size: 1em; cursor: pointer; margin-right: 10px; margin-top: 8px; }
+    .btn:hover { background: #3a5ce0; }
+    .btn.secondary { background: #555; }
+    .btn.secondary:hover { background: #333; }
+    pre { background: #f4f4f4; padding: 14px; border-radius: 6px; font-size: 0.8em; overflow-x: auto; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+    .complete-badge { display: inline-block; background: #2a7a2a; color: white; padding: 3px 10px; border-radius: 12px; font-size: 0.8em; margin-left: 8px; }
+    .missing-badge { display: inline-block; background: #aaa; color: white; padding: 3px 10px; border-radius: 12px; font-size: 0.8em; margin-left: 8px; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <div class="card">
+    <h1>Battery Complete</h1>
+    <div class="pid-box" id="pid-display">Participant ID: —</div>
+    <p>All tasks are complete. The table below shows summary scores for each instrument. Use the export buttons to save the data.</p>
+
+    <h2>Summary Scores</h2>
+    <table id="summary-table">
+      <thead>
+        <tr><th>Task</th><th>Status</th><th>Primary score</th><th>Secondary score</th></tr>
+      </thead>
+      <tbody id="summary-body"></tbody>
+    </table>
+
+    <h2>Export</h2>
+    <button class="btn" onclick="exportTSV()">Download as TSV (Excel/Sheets)</button>
+    <button class="btn secondary" onclick="exportJSON()">Download as JSON</button>
+    <button class="btn secondary" onclick="showRaw()">Show raw data ↓</button>
+    <pre id="raw-display" style="display:none;margin-top:14px"></pre>
+  </div>
+</div>
+
+<script>
+function getData(key) {
+  try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
+}
+
+const participantId = getData('participant_id') || 'unknown';
+document.getElementById('pid-display').textContent = `Participant ID: ${participantId}`;
+
+// ─── Build summary rows ──────────────────────────────────────────────────
+const antS    = getData('ant_summary');
+const craS    = getData('cra_summary');
+const attaS   = getData('atta_summary');
+const ellsS   = getData('ellsberg_summary');
+const lctsrS  = getData('lctsr_summary');
+const toslsS  = getData('tosls_summary');
+
+const rows = [
+  {
+    task: 'ANT — Meticulousness',
+    status: antS ? '✓' : '—',
+    primary: antS ? `Conflict effect: ${antS.conflict_effect_ms} ms` : null,
+    secondary: antS ? `Accuracy: ${antS.accuracy_pct}%` : null,
+  },
+  {
+    task: 'CRA — Problem-solving',
+    status: craS ? '✓' : '—',
+    primary: craS ? `Accuracy: ${craS.accuracy_pct}% (${craS.n_correct}/${craS.n_items})` : null,
+    secondary: craS ? `Mean solution time (correct): ${craS.mean_solution_time_correct} s` : null,
+  },
+  {
+    task: 'ATTA — Algorithmic thinking',
+    status: attaS ? '✓' : '—',
+    primary: attaS ? `Auto-scored: ${attaS.n_correct_auto}/${attaS.n_auto}` : null,
+    secondary: attaS ? `Manual review items: ${attaS.n_manual_review}` : null,
+  },
+  {
+    task: 'Ellsberg — Ambiguity',
+    status: ellsS ? '✓' : '—',
+    primary: ellsS ? `m(0.5) = ${ellsS.m_0x5 !== null ? (ellsS.m_0x5*100).toFixed(1)+'%' : '—'}` : null,
+    secondary: ellsS ? `m(0.1) = ${ellsS.m_0x1 !== null ? (ellsS.m_0x1*100).toFixed(1)+'%' : '—'}, m(0.9) = ${ellsS.m_0x9 !== null ? (ellsS.m_0x9*100).toFixed(1)+'%' : '—'}` : null,
+  },
+  {
+    task: 'LCTSR — Critical thinking',
+    status: lctsrS ? '✓' : '—',
+    primary: lctsrS ? `Total: ${lctsrS.n_correct}/${lctsrS.n_items}` : null,
+    secondary: lctsrS ? Object.entries(lctsrS.by_type || {}).map(([k,v]) => `${k}: ${v.correct}/${v.n}`).join(', ') : null,
+  },
+  {
+    task: 'TOSLS — Investigation',
+    status: toslsS ? '✓' : '—',
+    primary: toslsS ? `Total: ${toslsS.n_correct}/${toslsS.n_items}` : null,
+    secondary: toslsS ? Object.entries(toslsS.by_skill || {}).map(([k,v]) => `${k}: ${v.correct}/${v.n}`).join(', ') : null,
+  },
+];
+
+const tbody = document.getElementById('summary-body');
+rows.forEach(r => {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td>${r.task}</td>
+    <td class="${r.primary ? 'good' : 'missing'}">${r.status}</td>
+    <td class="${r.primary ? '' : 'missing'}">${r.primary || 'not completed'}</td>
+    <td class="${r.secondary ? '' : 'missing'}">${r.secondary || '—'}</td>`;
+  tbody.appendChild(tr);
+});
+
+// ─── TSV Export ──────────────────────────────────────────────────────────
+function exportTSV() {
+  const lines = [];
+  lines.push('participant_id\ttask\tkey\tvalue');
+  const emit = (task, key, val) => lines.push([participantId, task, key, val].join('\t'));
+
+  if (antS) {
+    emit('ANT','conflict_effect_ms', antS.conflict_effect_ms);
+    emit('ANT','alerting_effect_ms', antS.alerting_effect_ms);
+    emit('ANT','orienting_effect_ms', antS.orienting_effect_ms);
+    emit('ANT','accuracy_pct', antS.accuracy_pct);
+    emit('ANT','n_trials', antS.n_trials);
+  }
+  if (craS) {
+    emit('CRA','n_correct', craS.n_correct);
+    emit('CRA','accuracy_pct', craS.accuracy_pct);
+    emit('CRA','mean_solution_time_s', craS.mean_solution_time_correct);
+  }
+  if (attaS) {
+    emit('ATTA','n_correct_auto', attaS.n_correct_auto);
+    emit('ATTA','n_auto_items', attaS.n_auto);
+    emit('ATTA','n_manual_review', attaS.n_manual_review);
+  }
+  if (ellsS) {
+    emit('Ellsberg','m_0.5', ellsS.m_0x5);
+    emit('Ellsberg','m_0.1', ellsS.m_0x1);
+    emit('Ellsberg','m_0.9', ellsS.m_0x9);
+    // Derived measures (Dimmock et al.):
+    if (ellsS.m_0x1 !== null && ellsS.m_0x5 !== null && ellsS.m_0x9 !== null) {
+      const aInsensitivity = 1 - (ellsS.m_0x9 - ellsS.m_0x1);
+      const aversion = 0.5 - ellsS.m_0x5;
+      emit('Ellsberg','a_insensitivity', aInsensitivity.toFixed(4));
+      emit('Ellsberg','ambiguity_aversion', aversion.toFixed(4));
+    }
+  }
+  if (lctsrS) {
+    emit('LCTSR','n_correct', lctsrS.n_correct);
+    emit('LCTSR','n_items', lctsrS.n_items);
+    if (lctsrS.by_type) Object.entries(lctsrS.by_type).forEach(([k,v]) => emit('LCTSR', `${k}_correct`, v.correct));
+  }
+  if (toslsS) {
+    emit('TOSLS','n_correct', toslsS.n_correct);
+    emit('TOSLS','n_items', toslsS.n_items);
+    if (toslsS.by_skill) Object.entries(toslsS.by_skill).forEach(([k,v]) => emit('TOSLS', `${k}_correct`, v.correct));
+  }
+
+  const tsv = lines.join('\n');
+  const blob = new Blob([tsv], {type: 'text/tab-separated-values'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `battery_${participantId}_${Date.now()}.tsv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ─── JSON Export ─────────────────────────────────────────────────────────
+function exportJSON() {
+  const all = {
+    participant_id: participantId,
+    exported_at: new Date().toISOString(),
+    ant_summary: antS,   ant_raw: getData('ant_raw'),
+    cra_summary: craS,   cra_trials: getData('cra_trials'),
+    atta_summary: attaS, atta_trials: getData('atta_trials'),
+    ellsberg_summary: ellsS, ellsberg_trials: getData('ellsberg_trials'),
+    lctsr_summary: lctsrS, lctsr_trials: getData('lctsr_trials'),
+    tosls_summary: toslsS, tosls_trials: getData('tosls_trials'),
+  };
+  const blob = new Blob([JSON.stringify(all, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `battery_${participantId}_${Date.now()}.json`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function showRaw() {
+  const el = document.getElementById('raw-display');
+  if (el.style.display === 'none') {
+    const all = {
+      ant_summary: antS, cra_summary: craS, atta_summary: attaS,
+      ellsberg_summary: ellsS, lctsr_summary: lctsrS, tosls_summary: toslsS,
+    };
+    el.textContent = JSON.stringify(all, null, 2);
+    el.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+  }
+}
+</script>
+</body>
+</html>
